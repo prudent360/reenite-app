@@ -4,4 +4,5 @@
 !.env.example
 !.env.production.example
 node_modules/
-vendor/
+# Composer's packages only. A bare "vendor/" would also hide api/resources/views/vendor (the email layout).
+/api/vendor/
