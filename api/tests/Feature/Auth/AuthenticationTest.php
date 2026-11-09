@@ -20,6 +20,26 @@ class AuthenticationTest extends TestCase
         $this->seed(RolesAndPermissionsSeeder::class);
     }
 
+    public function test_registration_succeeds_even_when_the_mail_server_fails(): void
+    {
+        // An unreachable SMTP server, like a wrong host or a blocked port on shared hosting.
+        config([
+            'mail.default' => 'smtp',
+            'mail.mailers.smtp.host' => '127.0.0.1',
+            'mail.mailers.smtp.port' => 1,
+            'mail.mailers.smtp.timeout' => 1,
+        ]);
+
+        $this->postJson('/api/v1/auth/register', [
+            'name' => 'Mfon Udo',
+            'email' => 'mfon@example.com',
+            'password' => 'secret-pass-123',
+            'password_confirmation' => 'secret-pass-123',
+        ])->assertCreated()->assertJsonStructure(['token']);
+
+        $this->assertDatabaseHas('users', ['email' => 'mfon@example.com']);
+    }
+
     public function test_customer_can_register_and_receives_token(): void
     {
         Notification::fake();

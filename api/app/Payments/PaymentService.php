@@ -258,11 +258,12 @@ class PaymentService
 
         $payment->refresh();
 
-        if ($outcome) {
-            $payment->user->notify(new PaymentReceiptNotification($payment));
-        }
+        // Confirm what was paid for first, then email the receipt.
         if ($outcome === 'invoice_paid') {
             InvoicePaid::dispatch($payment->invoice);
+        }
+        if ($outcome) {
+            $payment->user->notify(new PaymentReceiptNotification($payment));
         }
 
         return $payment;

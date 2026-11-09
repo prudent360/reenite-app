@@ -21,7 +21,25 @@ use Spatie\Permission\Traits\HasRoles;
 class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
-    use HasApiTokens, HasFactory, HasRoles, Notifiable;
+    use HasApiTokens, HasFactory, HasRoles;
+    use Notifiable {
+        notify as protected sendNotification;
+    }
+
+    /**
+     * Sends a notification, but never lets a failed email break the request that sent it.
+     * Emails go out after the real work (a payment credited, a booking saved, an account
+     * created), so an SMTP outage or a bad mail setting must not undo or block that work.
+     * The failure is logged instead, and staff can see it in storage/logs.
+     */
+    public function notify($instance): void
+    {
+        try {
+            $this->sendNotification($instance);
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
+    }
 
     public const TYPE_CUSTOMER = 'customer';
 
