@@ -1,0 +1,507 @@
+@import "tailwindcss";
+
+/* `dark:` follows the resolved theme on <html data-theme>, set before paint in layout.tsx. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/*
+ * Reenite design tokens. Navy and orange are sampled from the logo file.
+ */
+:root {
+  --navy-950: #10152c;
+  --navy-900: #1a2142;
+  --navy-800: #222a52;
+  --navy-700: #2a3260;
+  --navy-600: #3b4478;
+  --navy-400: #7a82ad;
+  --navy-200: #c9cde0;
+  --navy-100: #dfe2ee;
+  --navy-50: #eef0f6;
+
+  --orange-700: #c2410f;
+  --orange-600: #d94c1c;
+  --orange-500: #f05a28;
+  --orange-400: #f47a50;
+  --orange-100: #fde0d4;
+  --orange-50: #fdf0ea;
+
+  --background: #f6f7fb;
+  --surface: #ffffff;
+  --surface-muted: #f1f3f8;
+  --foreground: #1a2142;
+  --muted: #5c6488;
+  --border: #e3e6ef;
+  --ring: #f05a28;
+
+  --success: #12805c;
+  --success-soft: #e3f5ee;
+  --warning: #b45309;
+  --warning-soft: #fdf3e2;
+  --danger: #c0262d;
+  --danger-soft: #fdeaea;
+  --info: #2563c9;
+  --info-soft: #e7effc;
+
+  --sidebar: #ffffff;
+  --chart-bar: #f05a28;
+  --chart-grid: #eceef4;
+}
+
+/*
+ * Dark theme: its own steps from the same navy/orange ramps, not an automatic flip.
+ * Navy tints become raised surfaces; text tokens go light.
+ */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --navy-200: #b9bfdb;
+  --navy-100: #2b3463;
+  --navy-50: #1f2750;
+
+  --orange-100: #4a2a22;
+  --orange-50: #2e1f22;
+  --orange-700: #f47a50;
+  --orange-600: #f26a3a;
+
+  --background: #0e1226;
+  --surface: #161c38;
+  --surface-muted: #1d2445;
+  --foreground: #eef0f7;
+  --muted: #9aa1c4;
+  --border: #283056;
+
+  --success: #4fd1a1;
+  --success-soft: #133a33;
+  --warning: #f5b553;
+  --warning-soft: #3d2f17;
+  --danger: #f47c80;
+  --danger-soft: #42202a;
+  --info: #7fa8f5;
+  --info-soft: #1c2c52;
+
+  --sidebar: #121733;
+  --chart-bar: #f05a28;
+  --chart-grid: #232b4f;
+}
+
+@theme inline {
+  --color-navy-950: var(--navy-950);
+  --color-navy-900: var(--navy-900);
+  --color-navy-800: var(--navy-800);
+  --color-navy-700: var(--navy-700);
+  --color-navy-600: var(--navy-600);
+  --color-navy-400: var(--navy-400);
+  --color-navy-200: var(--navy-200);
+  --color-navy-100: var(--navy-100);
+  --color-navy-50: var(--navy-50);
+
+  --color-brand-700: var(--orange-700);
+  --color-brand-600: var(--orange-600);
+  --color-brand-500: var(--orange-500);
+  --color-brand-400: var(--orange-400);
+  --color-brand-100: var(--orange-100);
+  --color-brand-50: var(--orange-50);
+
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-sidebar: var(--sidebar);
+  --color-chart-bar: var(--chart-bar);
+  --color-chart-grid: var(--chart-grid);
+
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-montserrat);
+
+  /* Every corner in the UI is 5px; rounded-full (avatars, dots, pills) stays round. */
+  --radius-xs: 5px;
+  --radius-sm: 5px;
+  --radius: 5px;
+  --radius-md: 5px;
+  --radius-lg: 5px;
+  --radius-xl: 5px;
+  --radius-2xl: 5px;
+  --radius-3xl: 5px;
+  --radius-4xl: 5px;
+
+  --shadow-card: 0 1px 2px rgb(26 33 66 / 0.04), 0 4px 16px -4px rgb(26 33 66 / 0.08);
+  --shadow-pop: 0 12px 40px -8px rgb(26 33 66 / 0.25);
+  --shadow-pill: 0 8px 20px -6px rgb(26 33 66 / 0.45);
+
+  --animate-dot: dot-bounce 1s ease-in-out infinite;
+  --animate-hero-drift: hero-drift 14s ease-in-out infinite alternate;
+  --animate-hero-rise: hero-rise 0.75s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-scene-in: scene-in 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-step-progress: step-progress var(--step-duration, 5.5s) linear forwards;
+  --animate-step-progress-y: step-progress-y var(--step-duration, 5.5s) linear forwards;
+  --animate-float: float 5s ease-in-out infinite;
+  --animate-photo-up: photo-up 60s linear infinite;
+  --animate-photo-down: photo-down 60s linear infinite;
+
+  /* Hero photo columns: each column holds its photos twice, so half its height loops seamlessly. */
+  @keyframes photo-up {
+    from {
+      transform: translateY(0);
+    }
+    to {
+      transform: translateY(-50%);
+    }
+  }
+  @keyframes photo-down {
+    from {
+      transform: translateY(-50%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes hero-drift {
+    from {
+      transform: translate3d(0, 0, 0) rotate(0deg);
+    }
+    to {
+      transform: translate3d(-40px, 24px, 0) rotate(8deg);
+    }
+  }
+  @keyframes hero-rise {
+    from {
+      opacity: 0;
+      transform: translateY(18px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes scene-in {
+    from {
+      opacity: 0;
+      transform: translateY(14px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes step-progress-y {
+    from {
+      transform: scaleY(0);
+    }
+    to {
+      transform: scaleY(1);
+    }
+  }
+  @keyframes step-progress {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
+    }
+  }
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-8px);
+    }
+  }
+
+  @keyframes dot-bounce {
+    0%,
+    80%,
+    100% {
+      transform: scale(0.6);
+      opacity: 0.4;
+    }
+    40% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+::selection {
+  background: var(--orange-100);
+  color: var(--navy-900);
+}
+
+/* Faded diamond pattern from the Reenite poster, used on navy hero panels. */
+.bg-diamonds {
+  background-image:
+    linear-gradient(135deg, transparent 46%, rgb(255 255 255 / 0.05) 46%, rgb(255 255 255 / 0.05) 54%, transparent 54%),
+    linear-gradient(45deg, transparent 46%, rgb(255 255 255 / 0.04) 46%, rgb(255 255 255 / 0.04) 54%, transparent 54%);
+  background-size: 220px 220px;
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--surface-muted) 25%, var(--navy-50) 50%, var(--surface-muted) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/*
+ * Scroll reveal: elements start lowered, transparent and slightly blurred until <Reveal> or
+ * <ScrollReveals> marks them visible. A [data-stagger] container does the same to each child in turn.
+ */
+.js [data-reveal],
+.js [data-stagger] > * {
+  opacity: 0;
+  transform: translateY(28px);
+  filter: blur(8px);
+  transition:
+    opacity 0.8s cubic-bezier(0.2, 0.7, 0.2, 1),
+    transform 0.8s cubic-bezier(0.2, 0.7, 0.2, 1),
+    filter 0.8s cubic-bezier(0.2, 0.7, 0.2, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.js [data-reveal="visible"],
+.js [data-stagger="visible"] > * {
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+.js [data-stagger] > :nth-child(2) { --reveal-delay: 90ms; }
+.js [data-stagger] > :nth-child(3) { --reveal-delay: 180ms; }
+.js [data-stagger] > :nth-child(4) { --reveal-delay: 270ms; }
+.js [data-stagger] > :nth-child(5) { --reveal-delay: 360ms; }
+.js [data-stagger] > :nth-child(6) { --reveal-delay: 450ms; }
+.js [data-stagger] > :nth-child(n + 7) { --reveal-delay: 540ms; }
+
+/* Hero entrance: each piece sharpens and rises in turn, set by --intro-delay. */
+.intro {
+  animation: blur-rise 1s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: var(--intro-delay, 0ms);
+}
+.intro-preview {
+  animation: preview-rise 1.3s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: var(--intro-delay, 0ms);
+}
+@keyframes blur-rise {
+  from {
+    opacity: 0;
+    transform: translateY(26px);
+    filter: blur(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+  }
+}
+@keyframes preview-rise {
+  from {
+    opacity: 0;
+    transform: translateY(70px);
+    filter: blur(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+  }
+}
+
+/* The header settles in from above on first load. */
+.intro-header {
+  animation: header-in 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@keyframes header-in {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+  }
+}
+
+/* A light sweeps across the button on hover. */
+.btn-shine {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.btn-shine::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  width: 50%;
+  transform: translateX(-150%) skewX(-15deg);
+  background: linear-gradient(to right, transparent, rgb(16 21 44 / 0.18), transparent);
+  transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+}
+.btn-shine:hover::before {
+  transform: translateX(250%) skewX(-15deg);
+}
+
+/* The hero preview leans back at the top of the page and straightens as you scroll (<HeroTilt>). */
+.hero-tilt {
+  transform: perspective(1600px) rotateX(calc((1 - var(--tilt, 1)) * 11deg)) scale(calc(0.95 + var(--tilt, 1) * 0.05));
+  transform-origin: 50% 0;
+  will-change: transform;
+}
+.js .hero-tilt {
+  --tilt: 0;
+}
+
+/* Endless sideways strip; the track holds its items twice so -50% loops without a seam. */
+.marquee-track {
+  animation: marquee 32s linear infinite;
+}
+.marquee:hover .marquee-track {
+  animation-play-state: paused;
+}
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* Small label above a section heading. */
+.eyebrow {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--orange-600);
+}
+
+/* The homepage uses the softer shapes of the business landing-page design.
+   Keep these local so booking, account and admin screens retain their tokens. */
+.reenite-home .rounded-md {
+  border-radius: 14px;
+}
+
+.reenite-home .home-preview select {
+  border-radius: 8px;
+}
+
+.reenite-home a:focus-visible,
+.reenite-home summary:focus-visible {
+  outline: 3px solid var(--orange-600);
+  outline-offset: 5px;
+}
+
+.home-hero a:focus-visible {
+  outline-color: #ffffff;
+}
+
+.home-hero-orbit {
+  position: absolute;
+  z-index: -1;
+  width: 1100px;
+  height: 1100px;
+  right: -550px;
+  top: 70px;
+  border: 100px solid rgb(255 255 255 / 0.07);
+  border-radius: 50%;
+  box-shadow: 0 0 0 90px rgb(255 255 255 / 0.04);
+  pointer-events: none;
+}
+
+.home-cta-orbit {
+  position: absolute;
+  width: 650px;
+  height: 650px;
+  left: -470px;
+  top: -90px;
+  border: 65px solid rgb(240 90 40 / 0.22);
+  border-radius: 50%;
+  box-shadow: 0 0 0 65px rgb(240 90 40 / 0.09), 0 0 0 130px rgb(240 90 40 / 0.04);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton,
+  .animate-dot,
+  .animate-hero-drift,
+  .animate-hero-rise,
+  .animate-scene-in,
+  .animate-float,
+  .animate-step-progress,
+  .animate-step-progress-y,
+  .animate-photo-up,
+  .animate-photo-down,
+  .animate-ping {
+    animation: none !important;
+  }
+  .js [data-reveal],
+  .js [data-stagger] > * {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    transition: none;
+  }
+  .intro,
+  .intro-preview,
+  .intro-header,
+  .marquee-track {
+    animation: none !important;
+  }
+  .hero-tilt {
+    transform: none;
+  }
+  .btn-shine::before {
+    display: none;
+  }
+}
+
+/* Lists and emphasis inside the privacy policy and terms. */
+.legal-body ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+.legal-body ul > li + li {
+  margin-top: 0.4rem;
+}
+.legal-body strong {
+  color: var(--foreground);
+  font-weight: 600;
+}
+.legal-body a {
+  color: var(--orange-600);
+  font-weight: 600;
+}
+.legal-body a:hover {
+  text-decoration: underline;
+}
