@@ -1,6 +1,6 @@
 import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
-import { API_URL } from "./api";
+import { API_URL, RETRY_SOON } from "./api";
 import type { BookingSettings, WorkspaceCatalogue } from "./types";
 
 export const BOOKING_SETTINGS_TAG = "booking-settings";
@@ -25,7 +25,7 @@ export async function getBookingSettings(): Promise<BookingSettings> {
     return (await response.json()) as BookingSettings;
   } catch (error) {
     console.error(error);
-    cacheLife("seconds");
+    cacheLife(RETRY_SOON);
     return fallback;
   }
 }
@@ -49,7 +49,7 @@ export async function getWorkspaceCatalogue(): Promise<WorkspaceCatalogue | null
     return (await response.json()) as WorkspaceCatalogue;
   } catch (error) {
     console.error(error);
-    cacheLife("seconds");
+    cacheLife(RETRY_SOON);
     return null;
   }
 }

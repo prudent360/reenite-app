@@ -1,6 +1,6 @@
 import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
-import { API_URL } from "./api";
+import { API_URL, RETRY_SOON } from "./api";
 import type { Catalogue, Service } from "./types";
 
 export const CATALOGUE_TAG = "catalogue";
@@ -23,7 +23,7 @@ export async function getCatalogue(): Promise<Catalogue | null> {
     return (await response.json()) as Catalogue;
   } catch (error) {
     console.error(error);
-    cacheLife("seconds");
+    cacheLife(RETRY_SOON);
     return null;
   }
 }
@@ -48,7 +48,7 @@ export async function getPublicService(slug: string): Promise<Service | undefine
     return ((await response.json()) as { data: Service }).data;
   } catch (error) {
     console.error(error);
-    cacheLife("seconds");
+    cacheLife(RETRY_SOON);
     return null;
   }
 }

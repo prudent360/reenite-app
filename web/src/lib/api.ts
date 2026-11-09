@@ -3,6 +3,13 @@ import { cookies, headers as requestHeaders } from "next/headers";
 import type { FormState } from "./types";
 
 export const API_URL = (process.env.API_URL ?? "http://localhost:8000").replace(/\/$/, "");
+
+/**
+ * Cache life for a failed API read: retried about a minute later. It stays just above the
+ * "short-lived" cut-off (expire of 5 minutes, stale of 30 seconds) on purpose, so a build that
+ * can't reach the API still prerenders with the fallback instead of failing.
+ */
+export const RETRY_SOON = { stale: 30, revalidate: 60, expire: 300 };
 export const TOKEN_COOKIE = "reenite_token";
 
 export class ApiError extends Error {
