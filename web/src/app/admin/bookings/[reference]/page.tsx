@@ -50,7 +50,7 @@ async function Detail({ reference }: { reference: string }) {
     ["Length", booking.rate_unit === "hour" ? `${booking.quantity} hour(s)` : `${booking.quantity} ${booking.rate_unit}(s)`],
     ["Check-in code", booking.check_in_code ? <span className="font-mono font-semibold tracking-widest">{booking.check_in_code}</span> : "Issued once paid"],
     ["Checked in", booking.checked_in_at ? `${formatDateTime(booking.checked_in_at)}${booking.checked_in_by ? ` by ${booking.checked_in_by}` : ""}` : "Not yet"],
-    ["Paid with", booking.paid_via ? { online: "Online payment", bank_transfer: "Bank transfer", pass: "Pass credits", free: "No charge" }[booking.paid_via] : "Not paid yet"],
+    ["Paid with", booking.paid_via ? { online: "Online payment", bank_transfer: "Bank transfer", pass: "Pass credits", free: "No charge", coupon: "Discount code (nothing to pay)" }[booking.paid_via] : "Not paid yet"],
     ["Notes", booking.notes ?? "None"],
   ];
 
@@ -89,6 +89,15 @@ async function Detail({ reference }: { reference: string }) {
               ))}
               {booking.discount > 0 && <div className="flex justify-between text-success"><span>{booking.discount_label}</span><span>-{formatNaira(booking.discount)}</span></div>}
               <div className="flex justify-between border-t border-border pt-2 font-semibold"><span>Total</span><span>{formatNaira(booking.total)}</span></div>
+              {booking.invoice?.coupon_code && (
+                <>
+                  <div className="flex justify-between text-success">
+                    <span>Code <span className="font-mono font-semibold">{booking.invoice.coupon_code}</span></span>
+                    <span>-{formatNaira(booking.invoice.coupon_discount)}</span>
+                  </div>
+                  <div className="flex justify-between font-semibold"><span>Customer pays</span><span>{formatNaira(booking.invoice.total)}</span></div>
+                </>
+              )}
               {(booking.invoice?.payments ?? []).map((payment) => (
                 <div key={payment.reference} className="flex items-center justify-between gap-3 rounded-lg bg-surface-muted px-3 py-2">
                   <span className="text-muted">{payment.gateway_label} · {formatNaira(payment.amount)}</span>

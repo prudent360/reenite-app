@@ -322,7 +322,9 @@ function PhotoCard({ space }: { space: Space }) {
         )}
       </div>
       <div className="flex items-center justify-between gap-2 p-4">
-        <p className="text-xs text-muted">JPG, PNG or WebP, at least 600 x 400, up to {MAX_UPLOAD_LABEL}.</p>
+        <p className="text-xs text-muted">
+          Shown on the homepage and booking pages. JPG, PNG or WebP, at least 600 x 400, up to {MAX_UPLOAD_LABEL}. Landscape photos look best.
+        </p>
         <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={upload} tabIndex={-1} aria-hidden />
         <div className="flex shrink-0 gap-1">
           <Button variant="outline" size="sm" onClick={() => input.current?.click()} disabled={pending}>

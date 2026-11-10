@@ -164,7 +164,7 @@ function BookingList({ bookings }: { bookings: Booking[] }) {
             </div>
             <div className="flex items-center gap-4 text-sm">
               {booking.check_in_code && <span className="font-mono font-semibold tracking-widest text-foreground">{booking.check_in_code}</span>}
-              <span className="text-muted">{formatNaira(booking.total)}</span>
+              <span className="text-muted">{formatNaira(booking.invoice?.total ?? booking.total)}</span>
               <ArrowRight className="size-4 text-muted" />
             </div>
           </Link>

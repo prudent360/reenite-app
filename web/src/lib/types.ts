@@ -508,7 +508,7 @@ export type Booking = {
   discount_label: string | null;
   total: number;
   pass_credits_used: number;
-  paid_via: "online" | "bank_transfer" | "pass" | "free" | null;
+  paid_via: "online" | "bank_transfer" | "pass" | "free" | "coupon" | null;
   hold_expires_at: string | null;
   /** Held and still within its payment window. */
   hold_active: boolean;

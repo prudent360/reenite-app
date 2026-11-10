@@ -51,11 +51,11 @@ import { Reveal } from "@/components/home/reveal";
 import { howItWorksScenes, howItWorksSteps } from "@/components/home/scenes";
 import { Plans } from "@/components/site/plans";
 import { ButtonLink, buttonClasses } from "@/components/ui/button";
-import { academy, amenities, hq, pillars, referral, spaceTypes, type SpaceType } from "@/content/site";
-import { bookingHref, getBookingSettings } from "@/lib/booking";
+import { academy, amenities, hq, pillars, referral, spaceTypes } from "@/content/site";
+import { bookingHref, getBookingSettings, getWorkspaceCatalogue } from "@/lib/booking";
 import type { BookingSettings } from "@/lib/types";
 import { getCatalogue } from "@/lib/catalogue";
-import type { Catalogue, Service } from "@/lib/types";
+import type { Catalogue, Service, Space, WorkspaceCatalogue } from "@/lib/types";
 import { formatNaira } from "@/lib/utils";
 
 /*
@@ -65,14 +65,14 @@ import { formatNaira } from "@/lib/utils";
  * or book.reenite.com).
  */
 export default async function HomePage() {
-  const [catalogue, bookingSettings] = await Promise.all([getCatalogue(), getBookingSettings()]);
+  const [catalogue, bookingSettings, workspace] = await Promise.all([getCatalogue(), getBookingSettings(), getWorkspaceCatalogue()]);
 
   return (
     <div className="reenite-home">
       <Hero settings={bookingSettings} />
       <NeedPicker catalogue={catalogue} settings={bookingSettings} />
       <Intro />
-      <SpacesSection settings={bookingSettings} />
+      <SpacesSection settings={bookingSettings} workspace={workspace} />
       <PodcastStudio settings={bookingSettings} />
       <ServiceAreas />
       <LegalExpertsSection />
@@ -112,7 +112,7 @@ const glass = "border border-white/15 bg-white/[0.07] backdrop-blur-md shadow-[i
 
 function Hero({ settings }: { settings: BookingSettings }) {
   return (
-    <section className="home-hero relative isolate overflow-hidden bg-[linear-gradient(to_bottom,var(--navy-950)_0,var(--navy-950)_calc(100%-14rem),var(--surface)_calc(100%-14rem))] text-white">
+    <section className="home-hero relative isolate overflow-hidden bg-[var(--navy-950)] pb-16 text-white md:bg-[linear-gradient(to_bottom,var(--navy-950)_0,var(--navy-950)_calc(100%-14rem),var(--surface)_calc(100%-14rem))] md:pb-0">
       <HeroBackdrop />
       <div className="relative mx-auto max-w-7xl px-4 pt-14 sm:px-6 sm:pt-20 lg:px-8">
         <div className="mx-auto flex max-w-4xl flex-col items-center text-center">
@@ -166,7 +166,8 @@ function Hero({ settings }: { settings: BookingSettings }) {
           </ul>
         </div>
 
-        <div className="intro-preview mt-14 sm:mt-20" style={introDelay(680)}>
+        {/* Phones skip the preview: drawn at their width it is a tall, cramped copy of the desktop. */}
+        <div className="intro-preview mt-20 hidden md:block" style={introDelay(680)}>
           <HeroTilt>
             <DashboardPreview />
           </HeroTilt>
@@ -179,7 +180,7 @@ function Hero({ settings }: { settings: BookingSettings }) {
 /** Faint grid lines, rings and an oversized Reenite mark behind the hero copy. */
 function HeroBackdrop() {
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[calc(100%-14rem)] overflow-hidden">
+    <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-full overflow-hidden md:h-[calc(100%-14rem)]">
       <div
         className="absolute inset-0 bg-[size:20%_18rem] bg-[position:center_top_4rem] [mask-image:radial-gradient(ellipse_75%_70%_at_50%_35%,#000_30%,transparent_100%)]"
         style={{
@@ -251,8 +252,8 @@ function DashboardPreview() {
         <span className="size-3 rounded-full border border-[#dea123] bg-[#febc2e]" />
         <span className="size-3 rounded-full border border-[#1aab29] bg-[#28c840]" />
       </div>
-      <div className="grid md:grid-cols-[190px_1fr]" aria-hidden>
-        <aside className="hidden border-r border-[#e3e6ef] bg-white p-4 md:block">
+      <div className="grid grid-cols-[190px_1fr]" aria-hidden>
+        <aside className="border-r border-[#e3e6ef] bg-white p-4">
           <Logo tone="dark" href={null} className="!h-6" />
           <ul className="mt-8 space-y-1 text-[13px]">
             {previewNav.map((item) => (
@@ -349,8 +350,7 @@ function DashboardPreview() {
               </p>
             </div>
 
-            {/* The lower row only fits from tablet width up; phones see the first two cards. */}
-            <div className={`${card} hidden md:block`}>
+            <div className={card}>
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-[#5c6488]">Document vault</p>
                 <Lock className="size-4 text-[#5c6488]" />
@@ -367,7 +367,7 @@ function DashboardPreview() {
               </ul>
             </div>
 
-            <div className={`${card} hidden md:block`}>
+            <div className={card}>
               <p className="text-xs font-semibold text-[#5c6488]">Other orders</p>
               <ul className="mt-3 space-y-4">
                 {[
@@ -500,16 +500,75 @@ function Intro() {
 
 /* ---------- Spaces ---------- */
 
-const spacePhotos: Record<string, string> = {
+/** Stock photos used until an admin uploads a real one for the space (Admin > Workspace > Spaces). */
+const stockSpacePhotos: Record<string, string> = {
   "hot-desk": "/images/home/coworking-lagos.jpg",
   "private-office": "/images/home/private-office.jpg",
   "meeting-room": "/images/home/team-meeting.jpg",
   "podcast-studio": "/images/home/podcast-studio.jpg",
 };
 
+const spaceIcons: Record<string, typeof Mic> = {
+  "hot-desk": Armchair,
+  "private-office": DoorClosed,
+  "meeting-room": Building2,
+  "podcast-studio": Mic,
+  "event-space": PartyPopper,
+};
+
+const rateUnits: Record<string, string> = { hour: "an hour", day: "a day", week: "a week", month: "a month" };
+
+type HomeSpace = {
+  key: string;
+  name: string;
+  description: string;
+  photo: string | null;
+  icon: typeof Mic;
+  capacity: number;
+  price: number | null;
+  unit: string;
+  href: string;
+};
+
+/** The spaces set up in Admin > Workspace, with their photos and prices. Falls back to the fixed list if the API is unreachable. */
+function homeSpaces(workspace: WorkspaceCatalogue | null, settings: BookingSettings): HomeSpace[] {
+  const live = (workspace?.locations ?? []).flatMap((location) => (location.spaces ?? []) as Space[]).filter((space) => space.is_active);
+
+  if (live.length === 0) {
+    return spaceTypes.map((space) => ({
+      key: space.slug,
+      name: space.title,
+      description: space.description,
+      photo: stockSpacePhotos[space.slug] ?? null,
+      icon: space.icon,
+      capacity: space.capacity,
+      price: space.fromHourly,
+      unit: rateUnits.hour,
+      href: bookingHref(settings),
+    }));
+  }
+
+  return live.slice(0, 6).map((space) => {
+    const rates = (space.rates ?? []).filter((rate) => rate.is_active);
+    const rate = rates.find((item) => item.unit === "hour") ?? [...rates].sort((x, y) => x.price - y.price)[0];
+    const type = space.type?.slug ?? "";
+    return {
+      key: space.slug,
+      name: space.name,
+      description: space.summary ?? space.type?.description ?? "",
+      photo: space.photo_url ?? stockSpacePhotos[type] ?? null,
+      icon: spaceIcons[type] ?? Armchair,
+      capacity: space.capacity,
+      price: rate?.price ?? null,
+      unit: rate ? (rateUnits[rate.unit] ?? `per ${rate.unit}`) : "",
+      href: bookingHref(settings, `/${space.slug}`),
+    };
+  });
+}
+
 /** The spaces at Reenite with their starting prices. "Book" follows the admin switch (this site or the booking site). */
-function SpacesSection({ settings }: { settings: BookingSettings }) {
-  const [featured, ...rest] = spaceTypes;
+function SpacesSection({ settings, workspace }: { settings: BookingSettings; workspace: WorkspaceCatalogue | null }) {
+  const spaces = homeSpaces(workspace, settings);
   return (
     <section id="spaces" className="scroll-mt-20 bg-surface-muted">
       <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
@@ -528,13 +587,10 @@ function SpacesSection({ settings }: { settings: BookingSettings }) {
           </a>
         </div>
 
-        <div data-stagger="" className="mt-12 grid gap-5 lg:grid-cols-[1.2fr_1fr]">
-          <SpaceCard space={featured} settings={settings} large />
-          <div className="grid gap-5 sm:grid-cols-2">
-            {rest.map((space) => (
-              <SpaceCard key={space.slug} space={space} settings={settings} />
-            ))}
-          </div>
+        <div data-stagger="" className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {spaces.map((space) => (
+            <SpaceCard key={space.key} space={space} />
+          ))}
         </div>
 
         <ul data-reveal="" className="mt-10 flex flex-wrap gap-x-8 gap-y-3 text-[15px] text-foreground">
@@ -549,32 +605,38 @@ function SpacesSection({ settings }: { settings: BookingSettings }) {
   );
 }
 
-function SpaceCard({ space, settings, large = false }: { space: SpaceType; settings: BookingSettings; large?: boolean }) {
-  const photo = spacePhotos[space.slug];
+function SpaceCard({ space }: { space: HomeSpace }) {
   return (
     <a
-      href={bookingHref(settings)}
+      href={space.href}
       className="group flex flex-col overflow-hidden rounded-[16px] border border-border bg-surface transition hover:border-navy-200 hover:shadow-card"
     >
-      {photo && (
-        <div className={`relative overflow-hidden bg-surface-muted ${large ? "aspect-[16/10] lg:aspect-auto lg:flex-1" : "aspect-[16/9]"}`}>
+      <div className="relative aspect-[16/10] overflow-hidden bg-navy-50">
+        {space.photo ? (
           <Image
-            src={photo}
+            src={space.photo}
             alt=""
             fill
-            sizes={large ? "(min-width: 1024px) 680px, 100vw" : "(min-width: 640px) 300px, 100vw"}
+            sizes="(min-width: 1024px) 400px, (min-width: 640px) 50vw, 100vw"
             className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
           />
-        </div>
-      )}
-      <div className={large ? "p-6 sm:p-7" : "flex flex-1 flex-col p-5"}>
-        {!photo && <space.icon className="mb-4 size-7 text-brand-500" />}
-        <h3 className={`font-bold text-foreground group-hover:text-brand-600 ${large ? "text-xl" : "text-lg"}`}>{space.title}</h3>
-        <p className="mt-1.5 flex-1 text-sm leading-relaxed text-muted">{space.description}</p>
+        ) : (
+          <div className="flex size-full items-center justify-center text-brand-500">
+            <space.icon className="size-10" />
+          </div>
+        )}
+      </div>
+      <div className="flex flex-1 flex-col p-5">
+        <h3 className="text-lg font-bold text-foreground group-hover:text-brand-600">{space.name}</h3>
+        {space.description && <p className="mt-1.5 flex-1 text-sm leading-relaxed text-muted">{space.description}</p>}
         <div className="mt-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <p className="text-sm text-muted">
-            From <span className="font-display text-lg font-bold text-foreground">{formatNaira(space.fromHourly)}</span> an hour
-          </p>
+          {space.price !== null ? (
+            <p className="text-sm text-muted">
+              From <span className="font-display text-lg font-bold text-foreground">{formatNaira(space.price)}</span> {space.unit}
+            </p>
+          ) : (
+            <span />
+          )}
           <p className="text-xs text-muted">{space.capacity === 1 ? "Up to 1 person" : `Up to ${space.capacity} people`}</p>
         </div>
       </div>

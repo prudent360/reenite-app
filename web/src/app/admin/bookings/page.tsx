@@ -134,7 +134,7 @@ async function Bookings({ date, status, search }: { date: string | null; status:
                   </div>
                   <div className="flex items-center gap-4 text-sm">
                     <span className="font-mono text-muted">{booking.reference}</span>
-                    <span className="font-semibold text-foreground">{formatNaira(booking.total)}</span>
+                    <span className="font-semibold text-foreground">{formatNaira(booking.invoice?.total ?? booking.total)}</span>
                   </div>
                 </Link>
               </li>
