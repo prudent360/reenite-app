@@ -43,6 +43,20 @@ export function InvoiceDocument({ invoice }: { invoice: Invoice }) {
         </table>
       </div>
       <dl className="ml-auto max-w-xs space-y-2 border-t border-border px-6 py-5 text-sm">
+        {invoice.coupon_code && (
+          <>
+            <div className="flex justify-between">
+              <dt className="text-muted">Before discount</dt>
+              <dd className="text-foreground">{formatNaira(invoice.total + invoice.coupon_discount)}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted">
+                Code <span className="font-mono font-semibold text-foreground">{invoice.coupon_code}</span>
+              </dt>
+              <dd className="font-semibold text-success">−{formatNaira(invoice.coupon_discount)}</dd>
+            </div>
+          </>
+        )}
         <div className="flex justify-between">
           <dt className="text-muted">Total</dt>
           <dd className="font-semibold text-foreground">{formatNaira(invoice.total)}</dd>

@@ -1,15 +1,14 @@
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
-import { CalendarCheck, CalendarX, CircleCheck, Clock, Hourglass, Landmark, MapPin, QrCode, Ticket, Users } from "lucide-react";
+import Link from "next/link";
+import { CalendarCheck, CalendarX, CircleCheck, Clock, Hourglass, Landmark, MapPin, Ticket, Users } from "lucide-react";
 import { PayPanel } from "@/components/billing/pay-panel";
-import { BookingStatusBadge } from "@/components/booking/booking-parts";
 import { HoldCountdown } from "@/components/booking/hold-countdown";
 import { CancelBooking } from "@/components/booking/cancel-booking";
 import { Stepper } from "@/components/booking/stepper";
 import { ButtonLink } from "@/components/ui/button";
-import { Card, CardHeader } from "@/components/ui/card";
 import { ApiError, api } from "@/lib/api";
-import { payBooking, submitBookingTransfer } from "@/lib/actions/bookings";
+import { applyBookingCoupon, payBooking, removeBookingCoupon, submitBookingTransfer } from "@/lib/actions/bookings";
 import { formatWhen } from "@/lib/booking-format";
 import { getOptionalUser } from "@/lib/session";
 import type { Booking, PaymentOptions } from "@/lib/types";
@@ -36,91 +35,106 @@ export async function BookingView({ reference, token, paid, inDashboard = false 
   // Continues the booking steps: paying is the last one, and a confirmed booking has done them all.
   const stepperAt = booking.status === "held" && (holdActive || transferPending) ? 3 : ["confirmed", "checked_in"].includes(booking.status) ? 4 : null;
 
+  const showCode = (booking.status === "confirmed" || booking.status === "checked_in") && Boolean(booking.check_in_code);
+  const passHref = inDashboard ? `/dashboard/workspace/${booking.reference}/pass` : `/bookings/${booking.reference}/pass?${new URLSearchParams({ token })}`;
+  const headline = headlineFor(booking, holdActive, transferPending, paid, `${inDashboard ? "/dashboard/workspace/book" : "/book"}/${booking.space?.slug ?? ""}`);
+  const showCancel = booking.can_cancel && booking.status !== "held";
+
   return (
-    <div className="space-y-6">
-      {stepperAt !== null && <Stepper current={stepperAt} />}
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-        <div className="space-y-6">
-          <Headline booking={booking} holdActive={holdActive} transferPending={transferPending} paid={paid} bookAgain={`${inDashboard ? "/dashboard/workspace/book" : "/book"}/${booking.space?.slug ?? ""}`} />
+    <div className={`space-y-6 ${inDashboard ? "max-w-3xl" : "mx-auto max-w-3xl"}`}>
+      {stepperAt === 3 && <Stepper current={stepperAt} />}
 
-          {(booking.status === "confirmed" || booking.status === "checked_in") && booking.check_in_code && (
-            <Card className="p-6 text-center">
-              <QrCode className="mx-auto size-8 text-brand-500" />
-              <p className="mt-3 text-sm font-semibold text-muted">Show this code at the front desk</p>
-              <p className="mt-2 font-mono text-4xl font-bold tracking-[0.3em] text-foreground">{booking.check_in_code}</p>
-              {booking.checked_in_at && <p className="mt-3 text-sm text-success">Checked in. Enjoy your day at Reenite.</p>}
-              <ButtonLink
-                href={inDashboard ? `/dashboard/workspace/${booking.reference}/pass` : `/bookings/${booking.reference}/pass?${new URLSearchParams({ token })}`}
-                variant="outline"
-                className="mt-5"
-              >
-                <Ticket className="size-4" /> View booking pass
-              </ButtonLink>
-            </Card>
-          )}
+      {/* One ticket: what happened, what was booked, and the code to show at the desk. */}
+      <article className="overflow-hidden rounded-2xl border border-border bg-surface shadow-card">
+        <header className="flex items-start gap-4 p-6 sm:p-8">
+          <span className={`flex size-11 shrink-0 items-center justify-center rounded-full ${headline.tone}`}>
+            <headline.icon className="size-5" />
+          </span>
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">{headline.title}</h1>
+            <div className="mt-1 text-muted">{headline.body}</div>
+          </div>
+        </header>
 
-          {options && booking.invoice && (
-            <PayPanel
-              invoice={booking.invoice}
-              options={options}
-              title="Pay to confirm your booking"
-              pay={payBooking.bind(null, booking.reference, token)}
-              transfer={submitBookingTransfer.bind(null, booking.reference, token)}
-            />
-          )}
+        <div className={`grid border-t border-border ${showCode ? "sm:grid-cols-[minmax(0,1fr)_15rem]" : ""}`}>
+          <div className="p-6 sm:p-8">
+            <p className="text-lg font-bold text-foreground">{booking.space_name}</p>
+            <p className="mt-0.5 font-mono text-xs text-muted">{booking.reference}</p>
+            <dl className="mt-5 space-y-2.5 text-[15px]">
+              <Detail icon={Clock} label="When">
+                {formatWhen(booking)}
+              </Detail>
+              <Detail icon={Users} label="People">
+                {booking.seats} {booking.seats === 1 ? "person" : "people"}
+              </Detail>
+              <Detail icon={MapPin} label="Where">
+                {booking.location_name}
+                {booking.space?.location?.address ? `, ${booking.space.location.address}` : ""}
+              </Detail>
+              {(booking.addons ?? []).map((addon) => (
+                <Detail key={addon.name} icon={CalendarCheck} label="Extra">
+                  {addon.name}
+                  {addon.quantity > 1 ? ` × ${addon.quantity}` : ""} · {formatNaira(addon.total)}
+                </Detail>
+              ))}
+            </dl>
+            <div className="mt-6 flex items-baseline justify-between gap-4 border-t border-border pt-4">
+              <span className="text-sm text-muted">
+                {booking.discount > 0 ? `Total after ${booking.discount_label} (-${formatNaira(booking.discount)})` : "Total"}
+              </span>
+              <span className="text-xl font-bold text-foreground">{formatNaira(booking.total)}</span>
+            </div>
+            {booking.invoice?.coupon_code && (
+              <div className="mt-2 flex items-baseline justify-between gap-4 text-sm">
+                <span className="text-muted">
+                  Code <span className="font-mono font-semibold text-foreground">{booking.invoice.coupon_code}</span> (-{formatNaira(booking.invoice.coupon_discount)})
+                </span>
+                <span className="font-semibold text-foreground">You pay {formatNaira(booking.invoice.total)}</span>
+              </div>
+            )}
+            {booking.refund_amount > 0 && <p className="mt-2 text-sm text-success">Refund: {formatNaira(booking.refund_amount)}</p>}
+          </div>
 
-          {booking.can_cancel && booking.status !== "held" && <CancelBooking booking={booking} token={token} />}
-
-          {!user && !inDashboard && booking.status !== "expired" && (
-            <Card className="p-5 text-sm">
-              <p className="font-semibold text-foreground">Keep track of your bookings</p>
-              <p className="mt-1 text-muted">Create a free account with the email you booked with and this booking will be waiting for you.</p>
-              <ButtonLink href="/register" variant="outline" size="sm" className="mt-3">
-                Create an account
-              </ButtonLink>
-            </Card>
+          {showCode && (
+            <div className="flex flex-col items-center justify-center gap-1 border-t border-dashed border-border bg-surface-muted/60 p-6 text-center sm:border-l sm:border-t-0 sm:p-8">
+              <p className="text-xs font-semibold text-muted">Check-in code</p>
+              <p className="font-mono text-3xl font-bold tracking-[0.2em] text-foreground">{booking.check_in_code}</p>
+              <p className="text-xs text-muted">{booking.checked_in_at ? "Checked in" : "Show this at the front desk"}</p>
+              <Link href={passHref} className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-600 hover:underline">
+                <Ticket className="size-4" /> Booking pass
+              </Link>
+            </div>
           )}
         </div>
 
-        <Card className="lg:sticky lg:top-24">
-          <CardHeader title={booking.space_name} description={booking.reference} />
-          <dl className="space-y-3 p-5 text-sm sm:p-6">
-            <Detail icon={Clock} label="When">
-              {formatWhen(booking)}
-            </Detail>
-            <Detail icon={Users} label="People">
-              {booking.seats} {booking.seats === 1 ? "person" : "people"}
-            </Detail>
-            <Detail icon={MapPin} label="Where">
-              {booking.location_name}
-              {booking.space?.location?.address ? `, ${booking.space.location.address}` : ""}
-            </Detail>
-            {(booking.addons ?? []).map((addon) => (
-              <Detail key={addon.name} icon={CalendarCheck} label="Extra">
-                {addon.name}
-                {addon.quantity > 1 ? ` × ${addon.quantity}` : ""} · {formatNaira(addon.total)}
-              </Detail>
-            ))}
-            {booking.discount > 0 && (
-              <Detail icon={Ticket} label="Discount">
-                {booking.discount_label}: -{formatNaira(booking.discount)}
-              </Detail>
-            )}
-            <div className="flex items-baseline justify-between border-t border-border pt-3">
-              <dt className="font-semibold text-foreground">Total</dt>
-              <dd className="text-xl font-bold text-foreground">{formatNaira(booking.total)}</dd>
-            </div>
-            {booking.refund_amount > 0 && <p className="text-success">Refund: {formatNaira(booking.refund_amount)}</p>}
-            {booking.cancellation_policy.length > 0 && (
-              <div className="rounded-xl bg-surface-muted p-3 text-xs leading-relaxed text-muted">
-                {booking.cancellation_policy.map((line) => (
-                  <p key={line}>{line}</p>
-                ))}
-              </div>
-            )}
-          </dl>
-        </Card>
-      </div>
+        {(booking.cancellation_policy.length > 0 || showCancel) && (
+          <footer className="flex flex-col gap-3 border-t border-border px-6 py-4 text-sm sm:flex-row sm:items-start sm:justify-between sm:px-8">
+            <p className="text-muted">{booking.cancellation_policy.map((line) => line.replace(/\.?$/, ".")).join(" ")}</p>
+            {showCancel && <CancelBooking booking={booking} token={token} />}
+          </footer>
+        )}
+      </article>
+
+      {options && booking.invoice && (
+        <PayPanel
+          invoice={booking.invoice}
+          options={options}
+          title="Pay to confirm your booking"
+          pay={payBooking.bind(null, booking.reference, token)}
+          transfer={submitBookingTransfer.bind(null, booking.reference, token)}
+          coupon={{ apply: applyBookingCoupon.bind(null, booking.reference, token), remove: removeBookingCoupon.bind(null, booking.reference, token) }}
+        />
+      )}
+
+      {!user && !inDashboard && booking.status !== "expired" && (
+        <p className="text-center text-sm text-muted">
+          Want to keep track of your bookings?{" "}
+          <Link href="/register" className="font-semibold text-brand-600 hover:underline">
+            Create a free account
+          </Link>{" "}
+          with the email you booked with.
+        </p>
+      )}
     </div>
   );
 }
@@ -137,53 +151,49 @@ function Detail({ icon: Icon, label, children }: { icon: typeof Clock; label: st
   );
 }
 
-function Headline({ booking, holdActive, transferPending, paid, bookAgain }: { booking: Booking; holdActive: boolean; transferPending: boolean; paid: boolean; bookAgain: string }) {
-  const shell = (icon: ReactNode, title: string, body: ReactNode) => (
-    <Card className="p-6">
-      <div className="flex items-start gap-4">
-        {icon}
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold text-foreground">{title}</h1>
-            <BookingStatusBadge booking={booking} />
-          </div>
-          <div className="mt-1.5 text-muted">{body}</div>
-        </div>
-      </div>
-    </Card>
-  );
-  const iconBox = (Icon: typeof Clock, tone: string) => (
-    <span className={`flex size-12 shrink-0 items-center justify-center rounded-2xl ${tone}`}>
-      <Icon className="size-6" />
-    </span>
-  );
+type Headline = { icon: typeof Clock; tone: string; title: string; body: ReactNode };
+
+function headlineFor(booking: Booking, holdActive: boolean, transferPending: boolean, paid: boolean, bookAgain: string): Headline {
+  const ended: Headline = {
+    icon: CalendarX,
+    tone: "bg-navy-50 text-foreground",
+    title: "This hold has ended",
+    body: (
+      <ButtonLink href={bookAgain} size="sm" className="mt-2">
+        Book again
+      </ButtonLink>
+    ),
+  };
 
   switch (booking.status) {
     case "confirmed":
-      return shell(iconBox(CircleCheck, "bg-success-soft text-success"), paid ? "Payment received. You're booked!" : "You're booked!", "We've emailed your confirmation. See you soon.");
+      return { icon: CircleCheck, tone: "bg-success-soft text-success", title: paid ? "Payment received. You're booked!" : "You're booked!", body: "We've emailed your confirmation. See you soon." };
     case "checked_in":
-      return shell(iconBox(CircleCheck, "bg-success-soft text-success"), "You're checked in", "Enjoy your day at Reenite.");
+      return { icon: CircleCheck, tone: "bg-success-soft text-success", title: "You're checked in", body: "Enjoy your day at Reenite." };
     case "completed":
-      return shell(iconBox(CalendarCheck, "bg-navy-50 text-foreground"), "Booking completed", "Thanks for working with us. Come back soon.");
+      return { icon: CalendarCheck, tone: "bg-navy-50 text-foreground", title: "Booking completed", body: "Thanks for working with us. Come back soon." };
     case "pending_approval":
-      return shell(iconBox(Hourglass, "bg-info-soft text-info"), "Request received", "Our team reviews bookings for this space. We'll email you within one working day, and you'll pay once it's approved.");
+      return { icon: Hourglass, tone: "bg-info-soft text-info", title: "Request received", body: "Our team reviews bookings for this space. We'll email you within one working day, and you'll pay once it's approved." };
     case "cancelled":
-      return shell(iconBox(CalendarX, "bg-danger-soft text-danger"), "Booking cancelled", booking.cancel_reason ?? "This booking was cancelled.");
+      return { icon: CalendarX, tone: "bg-danger-soft text-danger", title: "Booking cancelled", body: booking.cancel_reason ?? "This booking was cancelled." };
     case "expired":
-      return shell(iconBox(CalendarX, "bg-navy-50 text-foreground"), "This hold has ended", <ButtonLink href={bookAgain} size="sm" className="mt-2">Book again</ButtonLink>);
+      return ended;
     default:
       if (transferPending) {
-        return shell(iconBox(Landmark, "bg-info-soft text-info"), "We're checking your transfer", "Your space is held while our finance team confirms it, usually within one working day.");
+        return { icon: Landmark, tone: "bg-info-soft text-info", title: "We're checking your transfer", body: "Your space is held while our finance team confirms it, usually within one working day." };
       }
       if (!holdActive) {
-        return shell(iconBox(CalendarX, "bg-navy-50 text-foreground"), "This hold has ended", <ButtonLink href={bookAgain} size="sm" className="mt-2">Book again</ButtonLink>);
+        return ended;
       }
-      return shell(
-        iconBox(Clock, "bg-warning-soft text-warning"),
-        "Almost there",
-        <>
-          We&apos;re holding this space for you for <HoldCountdown until={booking.hold_expires_at!} />. Pay below to confirm it.
-        </>,
-      );
+      return {
+        icon: Clock,
+        tone: "bg-warning-soft text-warning",
+        title: "Almost there",
+        body: (
+          <>
+            We&apos;re holding this space for you for <HoldCountdown until={booking.hold_expires_at!} />. Pay below to confirm it.
+          </>
+        ),
+      };
   }
 }

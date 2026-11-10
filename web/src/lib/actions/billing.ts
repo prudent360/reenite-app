@@ -37,3 +37,24 @@ export async function submitBankTransfer(invoiceId: number, _prev: FormState, fo
   refresh();
   return { ok: true, message: "Thanks! We've received your transfer details and will confirm them shortly." };
 }
+
+/** Adds a discount code to an unpaid invoice. The API decides the discount. */
+export async function applyCoupon(invoiceId: number, code: string): Promise<FormState> {
+  try {
+    await api(`/billing/invoices/${invoiceId}/coupon`, { method: "POST", body: { code } });
+  } catch (error) {
+    return toFormState(error);
+  }
+  refresh();
+  return { ok: true, message: "Discount applied." };
+}
+
+export async function removeCoupon(invoiceId: number): Promise<FormState> {
+  try {
+    await api(`/billing/invoices/${invoiceId}/coupon`, { method: "DELETE" });
+  } catch (error) {
+    return toFormState(error);
+  }
+  refresh();
+  return { ok: true, message: "Discount removed." };
+}

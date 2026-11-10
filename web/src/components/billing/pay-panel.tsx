@@ -5,11 +5,13 @@ import { AlertCircle, Check, Copy, CreditCard, Landmark, Lock, ShieldCheck, Uplo
 import { toast } from "sonner";
 import { startPayment, submitBankTransfer } from "@/lib/actions/billing";
 import type { FormState, Invoice, PaymentOptions } from "@/lib/types";
+import { MAX_UPLOAD_LABEL, uploadTooLarge } from "@/lib/uploads";
 import { cn, formatNaira } from "@/lib/utils";
 import { Alert, Badge, Card, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DotLoader } from "@/components/ui/loader";
 import { SubmitButton, TextField } from "@/components/ui/form";
+import { CouponBox, type CouponActions } from "./coupon-box";
 
 type Method = string; // gateway code or "bank_transfer"
 
@@ -17,8 +19,9 @@ type PayAction = (gateway: string) => Promise<FormState & { data?: { redirect_ur
 type TransferAction = (prev: FormState, formData: FormData) => Promise<FormState>;
 
 /**
- * Online payment and bank transfer for an invoice. Bookings pass their own `pay` and `transfer`
- * actions (guests have no billing pages); otherwise the invoice's billing actions are used.
+ * Online payment and bank transfer for an invoice, with a discount code box. Bookings pass their own
+ * `pay`, `transfer` and `coupon` actions (guests have no billing pages); otherwise the invoice's
+ * billing actions are used.
  */
 export function PayPanel({
   invoice,
@@ -26,12 +29,14 @@ export function PayPanel({
   title = "Pay this invoice",
   pay,
   transfer,
+  coupon,
 }: {
   invoice: Invoice;
   options: PaymentOptions;
   title?: string;
   pay?: PayAction;
   transfer?: TransferAction;
+  coupon?: CouponActions;
 }) {
   const methods = [
     ...options.gateways.map((gateway) => ({ key: gateway.code, label: gateway.label, description: gateway.description, test: gateway.mode === "test" })),
@@ -43,10 +48,11 @@ export function PayPanel({
 
   if (methods.length === 0) {
     return (
-      <Card className="p-6">
+      <Card className="space-y-4 p-6">
         <Alert tone="info" icon={AlertCircle} title="Online payment isn't available yet">
           Please contact us to arrange payment for {invoice.number}.
         </Alert>
+        <CouponBox invoice={invoice} actions={coupon} />
       </Card>
     );
   }
@@ -68,6 +74,7 @@ export function PayPanel({
     <Card>
       <CardHeader title={title} description={`Amount due: ${formatNaira(invoice.balance)}`} />
       <div className="space-y-4 p-5 sm:p-6">
+        <CouponBox invoice={invoice} actions={coupon} />
         <div role="radiogroup" aria-label="Payment method" className="space-y-2">
           {methods.map((option) => (
             <button
@@ -189,8 +196,18 @@ function BankTransferForm({ invoice, options, transfer }: { invoice: Invoice; op
           >
             <Upload className="size-5 text-brand-500" />
             <span className="font-medium text-foreground">Choose a screenshot, photo or PDF</span>
-            <span className="text-xs text-muted">JPG, PNG, WebP or PDF, up to 5MB</span>
-            <input id="proof" name="proof" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required className="mt-2 max-w-full text-xs text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-navy-50 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-foreground" />
+            <span className="text-xs text-muted">JPG, PNG, WebP or PDF, up to {MAX_UPLOAD_LABEL}</span>
+            <input id="proof" name="proof" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"
+              required
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                const tooLarge = file && uploadTooLarge(file, "The file");
+                if (tooLarge) {
+                  toast.error(tooLarge);
+                  event.target.value = "";
+                }
+              }}
+              className="mt-2 max-w-full text-xs text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-navy-50 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-foreground" />
           </label>
           {state.errors?.proof && <p className="text-[13px] text-danger">{state.errors.proof[0]}</p>}
         </div>

@@ -6,8 +6,8 @@ const nextConfig: NextConfig = {
   partialPrefetching: true,
   experimental: {
     serverActions: {
-      // Legal document PDFs can be up to 10MB (the API's limit), plus multipart overhead.
-      bodySizeLimit: "11mb",
+      // Uploads are capped at 3MB (src/lib/uploads.ts), plus multipart overhead. Vercel refuses anything over 4.5MB.
+      bodySizeLimit: "4mb",
     },
   },
   turbopack: {

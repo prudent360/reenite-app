@@ -29,7 +29,7 @@ class BookingNotification extends TemplatedNotification
     protected function variables(User $notifiable): array
     {
         return $this->extra + self::bookingVariables($this->booking) + [
-            'amount' => Money::format($this->booking->total),
+            'amount' => Money::format($this->booking->chargedAmount()),
             'check_in_code' => (string) $this->booking->check_in_code,
             'cancellation_policy' => implode(' ', $this->booking->policy_snapshot['summary'] ?? []) ?: 'Contact us to change or cancel.',
             'email' => $notifiable->email,

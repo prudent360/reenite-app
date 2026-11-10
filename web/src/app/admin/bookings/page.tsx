@@ -30,7 +30,11 @@ export default function BookingsAdminPage({ searchParams }: PageProps<"/admin/bo
     <>
       <PageHeader title="Bookings" description="Today's arrivals, check-in, approvals and every booking." />
       <div className="space-y-6">
-        <CheckInBox />
+        <Suspense fallback={<CheckInBox />}>
+          {searchParams.then((query) => (
+            <CheckInBox initialCode={typeof query.checkin === "string" ? query.checkin : ""} />
+          ))}
+        </Suspense>
         <Suspense fallback={<Skeleton className="h-[480px] rounded-2xl" />}>
           {searchParams.then((query) => (
             <Bookings

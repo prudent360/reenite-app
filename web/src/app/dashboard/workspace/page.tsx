@@ -130,7 +130,7 @@ async function Workspace({ external }: { external: boolean }) {
                   {formatNaira(plan.price)}
                   <span className="text-sm font-normal text-muted">/{plan.billing_period}</span>
                 </p>
-                <p className="mt-1 flex-1 text-sm text-muted">{plan.booking_discount_percent}% off every booking{plan.perks.length ? ` · ${plan.perks.join(" · ")}` : ""}</p>
+                <p className="mt-1 flex-1 text-sm text-muted">{plan.booking_discount_percent}% off every booking{plan.mailbox_location ? ` · Business address and mailbox at ${plan.mailbox_location}` : ""}{plan.perks.length ? ` · ${plan.perks.join(" · ")}` : ""}</p>
                 <div className="mt-4">
                   <BuyPlanButton kind="memberships" planId={plan.id} label="Join" featured={plan.is_featured} />
                 </div>

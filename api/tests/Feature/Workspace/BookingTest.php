@@ -10,6 +10,7 @@ use App\Models\Addon;
 use App\Models\BlackoutDate;
 use App\Models\Booking;
 use App\Models\CancellationPolicy;
+use App\Models\Coupon;
 use App\Models\CustomerMembership;
 use App\Models\CustomerPass;
 use App\Models\Location;
@@ -205,6 +206,43 @@ class BookingTest extends TestCase
         Notification::assertSentTo($guest, BookingNotification::class, fn (BookingNotification $notification) => $notification->key === EmailTemplateKey::BookingConfirmed);
         Notification::assertSentTo($guest, BookingNotification::class, fn (BookingNotification $notification) => $notification->key === EmailTemplateKey::GuestAccountInvite);
         Notification::assertSentTo($frontDesk, StaffAlertNotification::class, fn (StaffAlertNotification $notification) => $notification->key === EmailTemplateKey::StaffNewBooking);
+    }
+
+    public function test_a_guest_uses_a_discount_code_and_pays_the_lower_amount(): void
+    {
+        Notification::fake();
+        Coupon::factory()->create(['code' => 'DESK20', 'discount_value' => 20, 'applies_to' => 'bookings']);
+        $response = $this->postJson('/api/v1/bookings', $this->roomBooking() + $this->guest())->assertCreated();
+        $booking = Booking::firstOrFail();
+        $token = $response->json('token');
+
+        $this->postJson("/api/v1/bookings/{$booking->reference}/coupon", ['code' => 'desk20'])->assertNotFound();
+        $this->postJson("/api/v1/bookings/{$booking->reference}/coupon", ['code' => 'desk20', 'token' => $token])
+            ->assertOk()
+            ->assertJsonPath('data.total', 1_500_000)
+            ->assertJsonPath('data.invoice.total', 1_200_000)
+            ->assertJsonPath('data.invoice.coupon_code', 'DESK20');
+
+        $this->fakePaystack(1_200_000);
+        $reference = $this->postJson("/api/v1/bookings/{$booking->reference}/pay", ['gateway' => 'paystack', 'token' => $token])->assertCreated()->json('reference');
+        $this->postJson("/api/v1/bookings/{$booking->reference}/payments/{$reference}/verify", ['token' => $token])->assertOk();
+
+        $this->assertSame(BookingStatus::Confirmed, $booking->refresh()->status);
+        $this->assertSame(1_200_000, $booking->chargedAmount());
+    }
+
+    public function test_a_full_discount_code_confirms_the_booking_without_payment(): void
+    {
+        Notification::fake();
+        Coupon::factory()->create(['code' => 'COMP', 'discount_value' => 100]);
+        $token = $this->postJson('/api/v1/bookings', $this->roomBooking() + $this->guest())->assertCreated()->json('token');
+        $booking = Booking::firstOrFail();
+
+        $this->postJson("/api/v1/bookings/{$booking->reference}/coupon", ['code' => 'COMP', 'token' => $token])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'confirmed')
+            ->assertJsonPath('data.invoice.status', 'paid');
+        $this->assertNotNull($booking->refresh()->check_in_code);
     }
 
     public function test_a_booking_needs_its_token_unless_the_owner_is_signed_in(): void

@@ -31,7 +31,7 @@ class WorkspaceController extends Controller
         return response()->json([
             'locations' => LocationResource::collection($locations),
             'pass_plans' => PassPlanResource::collection(PassPlan::ordered()->where('is_active', true)->with(['location', 'spaceTypes'])->get()),
-            'memberships' => MembershipPlanResource::collection(MembershipPlan::ordered()->where('is_active', true)->get()),
+            'memberships' => MembershipPlanResource::collection(MembershipPlan::ordered()->with('mailboxLocation')->where('is_active', true)->get()),
         ]);
     }
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { MAX_UPLOAD_LABEL } from "@/lib/uploads";
 import { ArrowLeft, CircleCheck, Clock, Download, FileText, MessagesSquare, PartyPopper, Receipt, UserRound, Wallet } from "lucide-react";
 import { ActivityList, AnswerValue, FileStatus, OrderStatusBadge, ProgressBar, StageTracker } from "@/components/orders/order-parts";
 import { CancelOrderButton, CustomerUpload, MessageThread } from "@/components/orders/order-interactive";
@@ -127,7 +128,7 @@ async function OrderView({ params, searchParams }: Pick<PageProps<"/dashboard/or
           )}
 
           <Card>
-            <CardHeader title="Documents you provide" description="Accepted formats: PDF, Word or a clear photo. Up to 10MB each." />
+            <CardHeader title="Documents you provide" description={`Accepted formats: PDF, Word or a clear photo. Up to ${MAX_UPLOAD_LABEL} each.`} />
             <ul className="divide-y divide-border">
               {[...(order.documents ?? []).map((doc) => ({ key: `r${doc.id}`, label: doc.label, description: doc.description, required: doc.is_required, file: doc.file, requirementId: doc.id, fieldKey: undefined as string | undefined })),
                 ...fileQuestions.map((answer) => ({ key: `f${answer.key}`, label: answer.label, description: null, required: answer.is_required, file: answer.file, requirementId: undefined as number | undefined, fieldKey: answer.key }))].map((item) => (

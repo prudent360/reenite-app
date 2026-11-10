@@ -259,7 +259,10 @@ class BookingService
             ? 'bank_transfer'
             : 'online';
 
-        $outcome = DB::transaction(function () use ($booking, $paidVia) {
+        // What the customer actually paid, which is less than the booking total when a discount code was used.
+        $paid = $booking->invoice ? max(0, $booking->invoice->amount_paid - $booking->invoice->amount_refunded) : $booking->total;
+
+        $outcome = DB::transaction(function () use ($booking, $paidVia, $paid) {
             Space::whereKey($booking->space_id)->lockForUpdate()->first();
             $locked = Booking::whereKey($booking->id)->lockForUpdate()->firstOrFail();
 
@@ -283,7 +286,7 @@ class BookingService
                     'paid_via' => $paidVia,
                     'cancelled_at' => now(),
                     'cancel_reason' => 'Payment arrived after the hold ended and the time had been booked by someone else.',
-                    'refund_amount' => $locked->total,
+                    'refund_amount' => $paid,
                 ]);
 
                 return 'clashed';
@@ -298,9 +301,9 @@ class BookingService
         }
         if ($outcome === 'clashed') {
             Log::warning('Booking paid after its slot was taken', ['booking' => $booking->reference]);
-            $this->refundAutomatically($booking, $booking->total, 'Booking could not be confirmed: slot taken after the hold ended.');
+            $this->refundAutomatically($booking, $paid, 'Booking could not be confirmed: slot taken after the hold ended.');
             $booking->user->notify(new BookingNotification(EmailTemplateKey::BookingCancelled, $booking, [
-                'refund_amount' => Money::format($booking->total),
+                'refund_amount' => $paid > 0 ? Money::format($paid) : 'No refund',
                 'reason' => 'your payment arrived after the hold ended and the time had been booked by someone else',
             ]));
         }
@@ -565,7 +568,7 @@ class BookingService
 
         Notification::send(StaffAlerts::recipients('bookings.manage'), new StaffAlertNotification(
             EmailTemplateKey::StaffNewBooking,
-            BookingNotification::bookingVariables($booking) + ['customer_name' => $booking->user->name, 'amount' => Money::format($booking->total)],
+            BookingNotification::bookingVariables($booking) + ['customer_name' => $booking->user->name, 'amount' => Money::format($booking->chargedAmount())],
             FrontendLinks::adminBooking((string) $booking->reference),
         ));
     }

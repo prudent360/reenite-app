@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\OrderFile;
 use App\Models\Service;
 use App\Orders\OrderService;
+use App\Uploads\UploadLimit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -23,7 +24,7 @@ class OrderController extends Controller
     /**
      * Accepted upload types for documents.
      */
-    public const FILE_RULES = ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf,doc,docx', 'max:10240'];
+    public const FILE_RULES = ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf,doc,docx', 'max:'.UploadLimit::KILOBYTES];
 
     public function __construct(private OrderService $orders) {}
 
@@ -66,7 +67,7 @@ class OrderController extends Controller
             'file' => self::FILE_RULES,
             'requirement_id' => ['required_without:field_key', 'nullable', 'integer'],
             'field_key' => ['required_without:requirement_id', 'nullable', 'string', 'max:60'],
-        ], ['file.mimes' => 'Upload a PDF, Word document or image (JPG, PNG, WebP).', 'file.max' => 'Files must be 10MB or smaller.']);
+        ], ['file.mimes' => 'Upload a PDF, Word document or image (JPG, PNG, WebP).', 'file.max' => UploadLimit::message()]);
 
         $this->orders->attachFile(
             $order,

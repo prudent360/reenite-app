@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\DB;
  */
 class PlanService
 {
-    public function __construct(private InvoiceService $invoices, private BookingService $bookings) {}
+    public function __construct(private InvoiceService $invoices, private BookingService $bookings, private MailboxService $mailboxes) {}
 
     /**
      * Creates the pass (waiting for payment) and its invoice.
@@ -90,6 +90,10 @@ class PlanService
             default => $startsAt->copy()->addMonthNoOverflow(),
         };
         $plan->update(['status' => CustomerPass::ACTIVE, 'starts_at' => $startsAt, 'ends_at' => $endsAt]);
+        if ($plan instanceof CustomerMembership) {
+            // Virtual office plans open (or extend) the member's mailbox.
+            $this->mailboxes->openForMembership($plan);
+        }
 
         $plan->loadMissing('user');
         $plan->user->notify(new PlanNotification($plan instanceof CustomerPass ? EmailTemplateKey::PassActivated : EmailTemplateKey::MembershipActivated, $plan));

@@ -166,3 +166,25 @@ export async function saveBookingSettings(input: BookingSettings): Promise<Resul
     return toFormState(error);
   }
 }
+
+/* ---------- Discount codes on a held booking ---------- */
+
+export async function applyBookingCoupon(reference: string, token: string, code: string): Promise<FormState> {
+  try {
+    await api(`/bookings/${reference}/coupon`, { method: "POST", body: { code, token } });
+  } catch (error) {
+    return toFormState(error);
+  }
+  refresh();
+  return { ok: true, message: "Discount applied." };
+}
+
+export async function removeBookingCoupon(reference: string, token: string): Promise<FormState> {
+  try {
+    await api(`/bookings/${reference}/coupon?${new URLSearchParams({ token })}`, { method: "DELETE" });
+  } catch (error) {
+    return toFormState(error);
+  }
+  refresh();
+  return { ok: true, message: "Discount removed." };
+}

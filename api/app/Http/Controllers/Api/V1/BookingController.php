@@ -11,9 +11,11 @@ use App\Models\Payment;
 use App\Models\Space;
 use App\Models\SpaceRate;
 use App\Models\User;
+use App\Payments\CouponService;
 use App\Payments\GatewayException;
 use App\Payments\PaymentService;
 use App\Support\FrontendLinks;
+use App\Uploads\UploadLimit;
 use App\Workspace\BookingService;
 use App\Workspace\GuestCustomers;
 use Illuminate\Http\JsonResponse;
@@ -118,6 +120,33 @@ class BookingController extends Controller
     }
 
     /**
+     * Applies a discount code to a held booking's invoice. A code covering the whole amount
+     * confirms the booking straight away.
+     */
+    public function applyCoupon(Request $request, Booking $booking, CouponService $coupons): BookingResource
+    {
+        $this->authorizeBooking($request, $booking);
+        $validated = $request->validate(['code' => ['required', 'string', 'max:40']], ['code.required' => 'Enter a discount code.']);
+        $this->assertAwaitingPayment($booking);
+
+        $booking->loadMissing(['invoice', 'user']);
+        $coupons->apply($booking->invoice, $validated['code'], $booking->user);
+
+        return $this->present($booking->refresh());
+    }
+
+    public function removeCoupon(Request $request, Booking $booking, CouponService $coupons): BookingResource
+    {
+        $this->authorizeBooking($request, $booking);
+        $this->assertAwaitingPayment($booking);
+
+        $booking->loadMissing('invoice');
+        $coupons->remove($booking->invoice);
+
+        return $this->present($booking->refresh());
+    }
+
+    /**
      * Starts an online payment for a held booking; the gateway brings the customer back to the booking.
      */
     public function pay(Request $request, Booking $booking): JsonResponse
@@ -142,12 +171,12 @@ class BookingController extends Controller
     {
         $this->authorizeBooking($request, $booking);
         $validated = $request->validate([
-            'proof' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
+            'proof' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', UploadLimit::rule()],
             'sender_name' => ['required', 'string', 'max:150'],
             'transferred_on' => ['required', 'date', 'before_or_equal:today', 'after:-60 days'],
         ], [
             'proof.mimes' => 'Upload a photo (JPG, PNG, WebP) or PDF of your transfer receipt.',
-            'proof.max' => 'The file must be 5MB or smaller.',
+            'proof.max' => UploadLimit::message('The file'),
         ]);
         $this->assertAwaitingPayment($booking);
 

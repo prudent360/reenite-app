@@ -10,13 +10,14 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 /**
  * Money fields are in kobo.
  */
 #[Fillable([
-    'user_id', 'source_type', 'source_id', 'status', 'currency', 'subtotal', 'total',
+    'user_id', 'source_type', 'source_id', 'status', 'currency', 'subtotal', 'total', 'coupon_code', 'coupon_discount',
     'amount_paid', 'amount_refunded', 'due_at', 'paid_at', 'voided_at', 'notes', 'created_by',
 ])]
 class Invoice extends Model
@@ -33,6 +34,7 @@ class Invoice extends Model
             'status' => InvoiceStatus::class,
             'subtotal' => 'integer',
             'total' => 'integer',
+            'coupon_discount' => 'integer',
             'amount_paid' => 'integer',
             'amount_refunded' => 'integer',
             'due_at' => 'date',
@@ -99,6 +101,14 @@ class Invoice extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class)->latest('id');
+    }
+
+    /**
+     * @return HasOne<CouponRedemption, $this>
+     */
+    public function couponRedemption(): HasOne
+    {
+        return $this->hasOne(CouponRedemption::class);
     }
 
     /**

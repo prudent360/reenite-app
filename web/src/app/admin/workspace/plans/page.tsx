@@ -27,7 +27,7 @@ async function Plans() {
   return (
     <div className="space-y-8">
       <PassPlanManager plans={passes} types={types} locations={locations} />
-      <MembershipManager plans={memberships} />
+      <MembershipManager plans={memberships} locations={locations} />
     </div>
   );
 }

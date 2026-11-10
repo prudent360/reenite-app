@@ -31,15 +31,18 @@ enum EmailTemplateKey: string
     case PassExpiring = 'pass_expiring';
     case MembershipActivated = 'membership_activated';
     case MembershipRenewalDue = 'membership_renewal_due';
+    case MailReceived = 'mail_received';
+    case MailScanned = 'mail_scanned';
     case DocumentToSign = 'document_to_sign';
     case StaffOrderAssigned = 'staff_order_assigned';
     case StaffTransferToReview = 'staff_transfer_to_review';
     case StaffNewBooking = 'staff_new_booking';
+    case StaffMailRequest = 'staff_mail_request';
 
     /**
      * Groups in the order the editor lists them.
      */
-    public const GROUPS = ['Account', 'Billing', 'Orders', 'Bookings', 'Passes and memberships', 'Documents', 'Staff alerts'];
+    public const GROUPS = ['Account', 'Billing', 'Orders', 'Bookings', 'Passes and memberships', 'Virtual office', 'Documents', 'Staff alerts'];
 
     public function group(): string
     {
@@ -50,7 +53,8 @@ enum EmailTemplateKey: string
             self::BookingConfirmed, self::BookingAwaitingPayment, self::BookingPendingApproval, self::BookingReminder,
             self::BookingCancelled, self::GuestAccountInvite => 'Bookings',
             self::PassActivated, self::PassExpiring, self::MembershipActivated, self::MembershipRenewalDue => 'Passes and memberships',
-            self::StaffOrderAssigned, self::StaffTransferToReview, self::StaffNewBooking => 'Staff alerts',
+            self::MailReceived, self::MailScanned => 'Virtual office',
+            self::StaffOrderAssigned, self::StaffTransferToReview, self::StaffNewBooking, self::StaffMailRequest => 'Staff alerts',
             self::DocumentToSign => 'Documents',
         };
     }
@@ -85,6 +89,9 @@ enum EmailTemplateKey: string
             self::StaffTransferToReview => 'Bank transfer to check',
             self::StaffNewBooking => 'New booking',
             self::DocumentToSign => 'Document to sign',
+            self::MailReceived => 'New mail arrived',
+            self::MailScanned => 'Mail scanned',
+            self::StaffMailRequest => 'Mail request from a customer',
         };
     }
 
@@ -118,6 +125,9 @@ enum EmailTemplateKey: string
             self::StaffTransferToReview => 'Tells Finance a customer has sent proof of a bank transfer.',
             self::StaffNewBooking => 'Tells the front desk about a new confirmed booking.',
             self::DocumentToSign => 'Sent when the team shares an agreement for the customer to read and sign online.',
+            self::MailReceived => 'Sent when the front desk logs a letter or parcel for a virtual office customer.',
+            self::MailScanned => 'Sent when a scan of a letter is ready to view.',
+            self::StaffMailRequest => 'Tells the front desk a customer wants mail collected, forwarded, scanned or shredded.',
         };
     }
 
@@ -139,6 +149,8 @@ enum EmailTemplateKey: string
             'booking_reference' => 'Booking number', 'space_name' => 'Space', 'location_name' => 'Location',
             'location_address' => 'Location address', 'booking_date' => 'Date', 'booking_time' => 'Start and end time', 'guests' => 'Number of people',
         ];
+
+        $mail = ['mailbox_number' => 'Mailbox number, e.g. RN-0012', 'business_name' => 'Name on the mailbox', 'mail_kind' => 'Letter, parcel or official letter', 'sender' => 'Who sent it', 'received_date' => 'Date it arrived'];
 
         return match ($this) {
             self::EmailVerification, self::PasswordReset => $common + ['expires_minutes' => 'Minutes until the link expires'],
@@ -166,6 +178,8 @@ enum EmailTemplateKey: string
             self::StaffTransferToReview => $common + ['invoice_number' => 'Invoice number', 'amount' => 'Amount transferred', 'customer_name' => 'Customer'],
             self::StaffNewBooking => $common + $booking + ['customer_name' => 'Customer or guest', 'amount' => 'Amount paid'],
             self::DocumentToSign => $common + ['document_title' => 'Name of the document'],
+            self::MailReceived, self::MailScanned => $common + $mail,
+            self::StaffMailRequest => $common + $mail + ['customer_name' => 'Customer', 'request' => 'What they asked for', 'request_note' => 'Their note, e.g. a forwarding address'],
         };
     }
 
@@ -363,6 +377,27 @@ enum EmailTemplateKey: string
                 'body' => "{{app_name}} has shared \"{{document_title}}\" for you to read and sign.\n\nIt's already signed on our side. Add your signature online in a minute, then download your signed copy any time from your dashboard.",
                 'button_text' => 'Read and sign',
                 'footer' => 'Questions about this document? Just reply to this email.',
+            ],
+            self::MailReceived => [
+                'subject' => 'New mail for {{business_name}}',
+                'heading' => 'You have mail, {{first_name}}',
+                'body' => "New {{mail_kind}} from {{sender}} arrived for mailbox {{mailbox_number}} on {{received_date}}.\n\nTell us what to do with it: hold it for collection, forward it, scan it or shred it.",
+                'button_text' => 'Open my mailbox',
+                'footer' => 'We keep mail safe at the front desk until you tell us what to do.',
+            ],
+            self::MailScanned => [
+                'subject' => 'Your scan is ready: {{mail_kind}} from {{sender}}',
+                'heading' => 'Hi {{first_name}},',
+                'body' => "We've scanned the {{mail_kind}} from {{sender}} that arrived on {{received_date}}. You can read it in your mailbox now.\n\nWe're still holding the original. Let us know if you'd like it collected, forwarded or shredded.",
+                'button_text' => 'Read the scan',
+                'footer' => null,
+            ],
+            self::StaffMailRequest => [
+                'subject' => 'Mail request: {{request}} for {{mailbox_number}}',
+                'heading' => 'Hi {{first_name}},',
+                'body' => "{{customer_name}} ({{business_name}}, mailbox {{mailbox_number}}) asked: {{request}}.\n\nItem: {{mail_kind}} from {{sender}}, received {{received_date}}.\nNote: {{request_note}}",
+                'button_text' => 'Open mail requests',
+                'footer' => null,
             ],
         };
     }

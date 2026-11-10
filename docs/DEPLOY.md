@@ -91,7 +91,7 @@ Save (Ctrl+O, Enter, Ctrl+X), then:
 php artisan key:generate --force
 php artisan migrate --force
 php artisan db:seed --class=ProductionSeeder --force   # roles, settings, services and workspace. No demo accounts.
-php artisan storage:link
+ln -s ~/reenite/api/storage/app/public ~/reenite/api/public/storage   # makes uploaded photos reachable (Hostinger blocks `php artisan storage:link`)
 php artisan config:cache
 php artisan route:cache
 php artisan app:create-admin you@reenite.com --name="Your Name"   # asks for a password
@@ -195,6 +195,8 @@ php artisan config:cache && php artisan route:cache
 php artisan queue:restart
 ```
 
+`migrate` also gives staff roles any new permissions (for example `coupons.manage` and `mail.manage`), so there's no seeder to run after an update.
+
 ---
 
 ## Backups
@@ -218,17 +220,9 @@ php artisan queue:restart
 
 ---
 
-## Known limit: large uploads on Vercel
+## Upload size limit
 
-Vercel accepts at most **4.5MB** in a single request to the website's server. Uploads currently pass through the website on their way to the API, and the app allows files of up to 10MB. Until this is changed, **uploads over about 4MB will fail on Vercel**. That covers customer documents, deliverables and legal-document PDFs.
-
-The options are:
-
-1. **Lower the limit to 4MB** in the app. Quick, and phone photos and scans are usually smaller.
-2. **Send files straight from the browser to the API** with a short-lived upload link, so files never pass through Vercel. This is the proper fix and needs a small code change.
-3. **Host the website on Hostinger** as a Node.js app instead of Vercel. This needs a Business or Cloud plan.
-
-Pick one before launch.
+Vercel accepts at most **4.5MB** in a single request to the website's server, and uploads pass through the website on their way to the API. So every upload (customer documents, deliverables, transfer receipts, legal PDFs, space photos, mail scans) is capped at **3MB**. The limit is set in two places that must match: `api/app/Uploads/UploadLimit.php` and `web/src/lib/uploads.ts`.
 
 ---
 
@@ -237,6 +231,7 @@ Pick one before launch.
 | Problem | Check |
 |---|---|
 | `api.reenite.com` shows a file list or "403" | The link in A4 is missing or points to the wrong folder. |
+| Uploaded photos show as broken images | The `public/storage` link is missing. `ls -la ~/reenite/api/public/storage` should point to `storage/app/public`. If not, run `php artisan storage:link`. If that fails with "`symlink()` is disabled" or "undefined function exec()" (Hostinger blocks both), run `ln -s ~/reenite/api/storage/app/public ~/reenite/api/public/storage` instead. |
 | "500 Server Error" | `tail -50 ~/reenite/api/storage/logs/laravel-*.log` |
 | Website says it can't reach the server | `API_URL` on Vercel, and `https://api.reenite.com/up` opens. |
 | Emails don't arrive | Admin > Settings > Email delivery test. Is the cron job running? `php artisan schedule:list` |

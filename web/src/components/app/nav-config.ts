@@ -12,6 +12,8 @@ import {
   Puzzle,
   Shapes,
   Ticket,
+  TicketPercent,
+  Mailbox,
   Undo2,
   DoorOpen,
   ClipboardList,
@@ -75,6 +77,7 @@ export const customerNav: NavSection[] = [
     items: [
       { href: "/dashboard/workspace", label: "My bookings", icon: CalendarCheck, tab: true, keywords: "bookings pass check-in code passes membership" },
       { href: "/dashboard/workspace/book", label: "Book a space", icon: Armchair, keywords: "desk office studio event booking" },
+      { href: "/dashboard/mailbox", label: "Mailbox", icon: Mailbox, keywords: "virtual office mail letters parcels business address scan forward" },
     ],
   },
   {
@@ -121,6 +124,7 @@ export const adminNav: NavSection[] = [
       { href: "/admin/orders", label: "Orders", icon: ClipboardList, permission: "orders.view_assigned", keywords: "pipeline filing" },
       { href: "/admin/customers", label: "Customers", icon: Users, permission: "customers.view", keywords: "users suspend" },
       { href: "/admin/legal", label: "Legal documents", icon: FileSignature, permission: "documents.manage", keywords: "agreements contracts sign virtual office upload" },
+      { href: "/admin/mail", label: "Mail", icon: Mailbox, permission: "mail.manage", keywords: "virtual office mailbox letters parcels scan forward collect" },
     ],
   },
   {
@@ -163,6 +167,7 @@ export const adminNav: NavSection[] = [
           { href: "/admin/finance", label: "Payments", icon: Wallet, permission: "payments.view", keywords: "revenue refunds receipts" },
           { href: "/admin/finance/transfers", label: "Transfers to review", icon: Landmark, permission: "payments.verify", keywords: "bank transfer proof approve" },
           { href: "/admin/finance/invoices", label: "Invoices", icon: ReceiptText, permission: "invoices.manage", keywords: "bill customer" },
+          { href: "/admin/finance/coupons", label: "Coupons", icon: TicketPercent, permission: "coupons.manage", keywords: "discount code promo voucher offer" },
         ],
       },
       { href: "/admin/analytics", label: "Analytics", icon: ChartColumn, permission: "reports.view", keywords: "reports revenue occupancy export csv" },

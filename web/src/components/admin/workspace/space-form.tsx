@@ -6,6 +6,7 @@ import { ImagePlus, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { deleteWorkspaceItem, removeSpacePhoto, uploadSpacePhoto } from "@/lib/actions/workspace";
 import type { Addon, CancellationPolicy, Location, OpeningDay, RateUnit, Space, SpaceType } from "@/lib/types";
+import { MAX_UPLOAD_LABEL, uploadTooLarge } from "@/lib/uploads";
 import { cn, formatNaira } from "@/lib/utils";
 import { chargeTypes, defaultHours, formatMinutes, rateUnits } from "@/lib/workspace";
 import { Alert, Card, CardHeader } from "@/components/ui/card";
@@ -287,6 +288,12 @@ function PhotoCard({ space }: { space: Space }) {
   function upload(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
+    const tooLarge = uploadTooLarge(file, "The photo");
+    if (tooLarge) {
+      toast.error(tooLarge);
+      event.target.value = "";
+      return;
+    }
     const formData = new FormData();
     formData.set("photo", file);
     startTransition(async () => {
@@ -315,7 +322,7 @@ function PhotoCard({ space }: { space: Space }) {
         )}
       </div>
       <div className="flex items-center justify-between gap-2 p-4">
-        <p className="text-xs text-muted">JPG, PNG or WebP, at least 600 x 400, up to 5MB.</p>
+        <p className="text-xs text-muted">JPG, PNG or WebP, at least 600 x 400, up to {MAX_UPLOAD_LABEL}.</p>
         <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={upload} tabIndex={-1} aria-hidden />
         <div className="flex shrink-0 gap-1">
           <Button variant="outline" size="sm" onClick={() => input.current?.click()} disabled={pending}>

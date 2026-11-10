@@ -22,6 +22,7 @@ class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, HasRoles;
+
     use Notifiable {
         notify as protected sendNotification;
     }
@@ -125,6 +126,16 @@ class User extends Authenticatable implements MustVerifyEmail
     public function invoices(): HasMany
     {
         return $this->hasMany(Invoice::class);
+    }
+
+    /**
+     * Virtual office mailboxes.
+     *
+     * @return HasMany<Mailbox, $this>
+     */
+    public function mailboxes(): HasMany
+    {
+        return $this->hasMany(Mailbox::class);
     }
 
     /**

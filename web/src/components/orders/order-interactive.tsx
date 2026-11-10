@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { cancelOrder, sendOrderMessage, uploadOrderFile } from "@/lib/actions/orders";
 import { postOrderMessage } from "@/lib/actions/admin-orders";
 import type { FormState, Order } from "@/lib/types";
+import { uploadTooLarge } from "@/lib/uploads";
 import { cn, formatDateTime } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { DotLoader } from "@/components/ui/loader";
@@ -28,8 +29,9 @@ export function UploadButton({
   function onPick(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("Files must be 10MB or smaller.");
+    const tooLarge = uploadTooLarge(file);
+    if (tooLarge) {
+      toast.error(tooLarge);
       event.target.value = "";
       return;
     }

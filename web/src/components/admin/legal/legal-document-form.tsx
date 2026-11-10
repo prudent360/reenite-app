@@ -9,6 +9,7 @@ import { SwitchField, TextField, TextareaField } from "@/components/ui/form";
 import { DotLoader } from "@/components/ui/loader";
 import { searchCustomers, updateLegalDocument, uploadLegalDocument } from "@/lib/actions/legal";
 import type { CustomerOption, LegalAudience, LegalDocumentDetail } from "@/lib/types";
+import { MAX_UPLOAD_LABEL, uploadTooLarge } from "@/lib/uploads";
 import { cn } from "@/lib/utils";
 
 const audiences = [
@@ -88,9 +89,19 @@ export function LegalDocumentForm({ document, onDone }: { document?: LegalDocume
             </span>
             <span className="min-w-0 flex-1 text-sm">
               <span className="block truncate font-semibold text-foreground">{file ? file.name : "Choose a PDF"}</span>
-              <span className="text-muted">{file ? `${(file.size / 1024 / 1024).toFixed(1)}MB` : "Up to 10MB. Clients read it in the browser before signing."}</span>
+              <span className="text-muted">{file ? `${(file.size / 1024 / 1024).toFixed(1)}MB` : `Up to ${MAX_UPLOAD_LABEL}. Clients read it in the browser before signing.`}</span>
             </span>
-            <input type="file" accept="application/pdf" className="sr-only" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
+            <input type="file" accept="application/pdf" className="sr-only" onChange={(event) => {
+                const picked = event.target.files?.[0] ?? null;
+                const tooLarge = picked && uploadTooLarge(picked, "The PDF");
+                if (tooLarge) {
+                  toast.error(tooLarge);
+                  event.target.value = "";
+                  return;
+                }
+                setFile(picked);
+              }}
+            />
           </label>
           {errors.file && <p className="text-[13px] text-danger">{errors.file[0]}</p>}
         </div>

@@ -97,6 +97,17 @@ class Booking extends Model
         return in_array($this->status->value, BookingStatus::occupying(), true);
     }
 
+    /**
+     * What the customer is charged: the invoice total, which is lower than the booking total
+     * when a discount code was used.
+     */
+    public function chargedAmount(): int
+    {
+        $this->loadMissing('invoice');
+
+        return $this->invoice->total ?? $this->total;
+    }
+
     public function matchesManageToken(?string $token): bool
     {
         return $token !== null && $this->manage_token !== null && hash_equals($this->manage_token, $token);

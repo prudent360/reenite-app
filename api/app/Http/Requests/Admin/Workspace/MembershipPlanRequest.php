@@ -31,6 +31,7 @@ class MembershipPlanRequest extends FormRequest
             'booking_discount_percent' => ['required', 'integer', 'min:0', 'max:100'],
             'perks' => ['nullable', 'array', 'max:20'],
             'perks.*' => ['nullable', 'string', 'max:120'],
+            'mailbox_location_id' => ['nullable', 'integer', Rule::exists('locations', 'id')],
             'is_featured' => ['boolean'],
             'is_active' => ['boolean'],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:9999'],

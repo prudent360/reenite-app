@@ -405,13 +405,13 @@ function PassPlanForm({ plan, types, locations, done }: { plan?: PassPlan; types
 
 const periodLabels = { month: "month", quarter: "quarter", year: "year" } as const;
 
-export function MembershipManager({ plans }: { plans: MembershipPlan[] }) {
+export function MembershipManager({ plans, locations }: { plans: MembershipPlan[]; locations: Location[] }) {
   return (
     <CrudPanel
       kind="membership-plans"
       items={plans}
       title="Memberships"
-      description="Paid plans that give members a discount on every booking, plus perks."
+      description="Paid plans that give members a discount on every booking, plus perks. A plan can include a virtual office mailbox."
       newLabel="New membership"
       emptyIcon={Users}
       emptyTitle="No memberships yet"
@@ -421,19 +421,21 @@ export function MembershipManager({ plans }: { plans: MembershipPlan[] }) {
           <p className="flex flex-wrap items-center gap-2 font-semibold text-foreground">
             {plan.name}
             {plan.is_featured && <Badge tone="brand">Featured</Badge>}
+            {plan.mailbox_location_id && <Badge tone="info">Virtual office</Badge>}
             {!plan.is_active && <Badge tone="neutral">Off</Badge>}
           </p>
           <p className="text-sm text-muted">
             {formatNaira(plan.price)} a {periodLabels[plan.billing_period]} · {plan.booking_discount_percent}% off bookings · {plan.perks.length} perk{plan.perks.length === 1 ? "" : "s"}
+            {plan.mailbox_location ? ` · mailbox at ${plan.mailbox_location}` : ""}
           </p>
         </>
       )}
-      renderForm={(plan, done) => <MembershipForm plan={plan} done={done} />}
+      renderForm={(plan, done) => <MembershipForm plan={plan} locations={locations} done={done} />}
     />
   );
 }
 
-function MembershipForm({ plan, done }: { plan?: MembershipPlan; done: () => void }) {
+function MembershipForm({ plan, locations, done }: { plan?: MembershipPlan; locations: Location[]; done: () => void }) {
   const { save, saving, error } = useWorkspaceSave("membership-plans", plan?.id ?? null);
   const [form, setForm] = useState({
     name: plan?.name ?? "",
@@ -442,6 +444,7 @@ function MembershipForm({ plan, done }: { plan?: MembershipPlan; done: () => voi
     billing_period: plan?.billing_period ?? "month",
     booking_discount_percent: String(plan?.booking_discount_percent ?? 10),
     sort_order: String(plan?.sort_order ?? 0),
+    mailbox_location_id: plan?.mailbox_location_id ? String(plan.mailbox_location_id) : "",
     is_featured: plan?.is_featured ?? false,
     is_active: plan?.is_active ?? true,
   });
@@ -454,7 +457,7 @@ function MembershipForm({ plan, done }: { plan?: MembershipPlan; done: () => voi
       className="space-y-4"
       onSubmit={(event) => {
         event.preventDefault();
-        save({ ...form, description: form.description || null, price: toKobo(form.price), booking_discount_percent: Number(form.booking_discount_percent), sort_order: Number(form.sort_order) || 0, perks }, done);
+        save({ ...form, description: form.description || null, price: toKobo(form.price), booking_discount_percent: Number(form.booking_discount_percent), sort_order: Number(form.sort_order) || 0, mailbox_location_id: form.mailbox_location_id ? Number(form.mailbox_location_id) : null, perks }, done);
       }}
     >
       <TextField label="Name" name="name" value={form.name} onChange={set("name")} error={error("name")} autoFocus />
@@ -468,6 +471,15 @@ function MembershipForm({ plan, done }: { plan?: MembershipPlan; done: () => voi
       </div>
       <TextField label="Discount on bookings (%)" name="booking_discount_percent" type="number" min={0} max={100} value={form.booking_discount_percent} onChange={set("booking_discount_percent")} error={error("booking_discount_percent")} />
       <ListInput label="Perks" value={perks} onChange={setPerks} placeholder="e.g. 1 free guest pass a month" hint="Shown as a checklist on the website." />
+      <SelectField label="Virtual office mailbox" name="mailbox_location_id" value={form.mailbox_location_id} onChange={set("mailbox_location_id")} error={error("mailbox_location_id")}>
+        <option value="">No mailbox</option>
+        {locations.map((location) => (
+          <option key={location.id} value={location.id}>
+            Mailbox at {location.name}
+          </option>
+        ))}
+      </SelectField>
+      {form.mailbox_location_id && <p className="-mt-2 text-xs text-muted">Members can use this location&apos;s address for their business mail. Their mailbox opens when they pay and stays open while the membership is paid up.</p>}
       <TextareaField label="Description (optional)" name="description" rows={2} value={form.description} onChange={set("description")} error={error("description")} />
       <TextField label="Order" name="sort_order" type="number" min={0} value={form.sort_order} onChange={set("sort_order")} error={error("sort_order")} />
       <SwitchField label="Highlight as most popular" checked={form.is_featured} onChange={(event) => setForm((current) => ({ ...current, is_featured: event.target.checked }))} />

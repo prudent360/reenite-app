@@ -1,10 +1,10 @@
 <?php
 
 use App\Http\Controllers\Api\V1\Admin\ActivityLogController;
-use App\Http\Controllers\Api\V1\UploadGrantController;
 use App\Http\Controllers\Api\V1\Admin\BookingController as AdminBookingController;
 use App\Http\Controllers\Api\V1\Admin\BundleController;
 use App\Http\Controllers\Api\V1\Admin\DashboardController;
+use App\Http\Controllers\Api\V1\Admin\Finance\CouponController;
 use App\Http\Controllers\Api\V1\Admin\Finance\InvoiceController as AdminInvoiceController;
 use App\Http\Controllers\Api\V1\Admin\Finance\PaymentController as AdminPaymentController;
 use App\Http\Controllers\Api\V1\Admin\Finance\SummaryController as FinanceSummaryController;
@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\V1\Admin\Workspace\AddonController;
 use App\Http\Controllers\Api\V1\Admin\Workspace\BlackoutDateController;
 use App\Http\Controllers\Api\V1\Admin\Workspace\CancellationPolicyController;
 use App\Http\Controllers\Api\V1\Admin\Workspace\LocationController;
+use App\Http\Controllers\Api\V1\Admin\Workspace\MailboxController as AdminMailboxController;
 use App\Http\Controllers\Api\V1\Admin\Workspace\MembershipPlanController;
 use App\Http\Controllers\Api\V1\Admin\Workspace\PassPlanController;
 use App\Http\Controllers\Api\V1\Admin\Workspace\SpaceController;
@@ -37,10 +38,12 @@ use App\Http\Controllers\Api\V1\Auth\PasswordResetController;
 use App\Http\Controllers\Api\V1\Billing\BillingController;
 use App\Http\Controllers\Api\V1\BookingController;
 use App\Http\Controllers\Api\V1\CatalogueController;
+use App\Http\Controllers\Api\V1\MailboxController;
 use App\Http\Controllers\Api\V1\MetaController;
 use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\PlanController;
 use App\Http\Controllers\Api\V1\ProfileController;
+use App\Http\Controllers\Api\V1\UploadGrantController;
 use App\Http\Controllers\Api\V1\WebhookController;
 use App\Http\Controllers\Api\V1\WorkspaceController;
 use Illuminate\Support\Facades\Route;
@@ -61,6 +64,8 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::post('/', [BookingController::class, 'store'])->middleware('throttle:10,1')->name('store');
         Route::get('{booking}', [BookingController::class, 'show'])->middleware('throttle:60,1')->name('show');
         Route::post('{booking}/cancel', [BookingController::class, 'cancel'])->middleware('throttle:10,1')->name('cancel');
+        Route::post('{booking}/coupon', [BookingController::class, 'applyCoupon'])->middleware('throttle:10,1')->name('coupon.store');
+        Route::delete('{booking}/coupon', [BookingController::class, 'removeCoupon'])->middleware('throttle:10,1')->name('coupon.destroy');
         Route::post('{booking}/pay', [BookingController::class, 'pay'])->middleware('throttle:10,1')->name('pay');
         Route::post('{booking}/bank-transfer', [BookingController::class, 'bankTransfer'])->middleware('throttle:5,1')->name('bank-transfer');
         Route::post('{booking}/payments/{payment:reference}/verify', [BookingController::class, 'verifyPayment'])->middleware('throttle:20,1')->withoutScopedBindings()->name('payments.verify');
@@ -116,6 +121,13 @@ Route::prefix('v1')->name('v1.')->group(function () {
 
         Route::get('my-bookings', [BookingController::class, 'index'])->name('bookings.index');
         Route::get('plans', [PlanController::class, 'index'])->name('plans.index');
+
+        Route::prefix('mailbox')->name('mailbox.')->group(function () {
+            Route::get('/', [MailboxController::class, 'index'])->name('index');
+            Route::get('items/{item}/scan', [MailboxController::class, 'scan'])->name('items.scan');
+            Route::post('items/{item}/request', [MailboxController::class, 'request'])->middleware('throttle:20,1')->name('items.request');
+            Route::delete('items/{item}/request', [MailboxController::class, 'cancelRequest'])->name('items.request.destroy');
+        });
         Route::post('plans/passes', [PlanController::class, 'buyPass'])->middleware('throttle:10,1')->name('plans.passes.store');
         Route::post('plans/memberships', [PlanController::class, 'buyMembership'])->middleware('throttle:10,1')->name('plans.memberships.store');
 
@@ -123,6 +135,8 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::get('options', [BillingController::class, 'options'])->name('options');
             Route::get('invoices', [BillingController::class, 'invoices'])->name('invoices.index');
             Route::get('invoices/{invoice}', [BillingController::class, 'invoice'])->name('invoices.show');
+            Route::post('invoices/{invoice}/coupon', [BillingController::class, 'applyCoupon'])->middleware('throttle:10,1')->name('invoices.coupon.store');
+            Route::delete('invoices/{invoice}/coupon', [BillingController::class, 'removeCoupon'])->middleware('throttle:10,1')->name('invoices.coupon.destroy');
             Route::post('invoices/{invoice}/pay', [BillingController::class, 'pay'])->middleware('throttle:10,1')->name('invoices.pay');
             Route::post('invoices/{invoice}/bank-transfer', [BillingController::class, 'bankTransfer'])->middleware('throttle:5,1')->name('invoices.bank-transfer');
             Route::get('payments', [BillingController::class, 'payments'])->name('payments.index');
@@ -214,7 +228,22 @@ Route::prefix('v1')->name('v1.')->group(function () {
                 Route::post('{order}/messages', [AdminOrderController::class, 'message'])->name('messages.store');
             });
 
+            Route::prefix('mail')->name('mail.')->middleware('permission:mail.manage')->group(function () {
+                Route::get('/', [AdminMailboxController::class, 'queue'])->name('queue');
+                Route::get('customers', [AdminMailboxController::class, 'customers'])->name('customers');
+                Route::get('locations', [AdminMailboxController::class, 'locations'])->name('locations');
+                Route::get('mailboxes', [AdminMailboxController::class, 'index'])->name('mailboxes.index');
+                Route::post('mailboxes', [AdminMailboxController::class, 'store'])->name('mailboxes.store');
+                Route::get('mailboxes/{mailbox}', [AdminMailboxController::class, 'show'])->name('mailboxes.show');
+                Route::put('mailboxes/{mailbox}', [AdminMailboxController::class, 'update'])->name('mailboxes.update');
+                Route::post('mailboxes/{mailbox}/items', [AdminMailboxController::class, 'logMail'])->name('mailboxes.items.store');
+                Route::post('items/{item}/scan', [AdminMailboxController::class, 'uploadScan'])->name('items.scan.store');
+                Route::get('items/{item}/scan', [AdminMailboxController::class, 'scan'])->name('items.scan');
+                Route::post('items/{item}/handle', [AdminMailboxController::class, 'handle'])->name('items.handle');
+            });
+
             Route::prefix('finance')->name('finance.')->group(function () {
+                Route::apiResource('coupons', CouponController::class)->middleware('permission:coupons.manage');
                 Route::middleware('permission:payments.view')->group(function () {
                     Route::get('summary', FinanceSummaryController::class)->name('summary');
                     Route::get('payments', [AdminPaymentController::class, 'index'])->name('payments.index');

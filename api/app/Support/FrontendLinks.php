@@ -75,6 +75,16 @@ class FrontendLinks
         return self::base().'/dashboard/workspace';
     }
 
+    public static function mailbox(): string
+    {
+        return self::base().'/dashboard/mailbox';
+    }
+
+    public static function adminMail(): string
+    {
+        return self::base().'/admin/mail';
+    }
+
     public static function register(string $email): string
     {
         return self::base().'/register?'.http_build_query(['email' => $email]);

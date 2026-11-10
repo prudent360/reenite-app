@@ -15,7 +15,7 @@ class MembershipPlanController extends Controller
 {
     public function index(): AnonymousResourceCollection
     {
-        return MembershipPlanResource::collection(MembershipPlan::ordered()->get());
+        return MembershipPlanResource::collection(MembershipPlan::ordered()->with('mailboxLocation')->get());
     }
 
     public function store(MembershipPlanRequest $request): JsonResponse

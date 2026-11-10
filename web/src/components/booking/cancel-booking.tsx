@@ -3,7 +3,6 @@
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader } from "@/components/ui/card";
 import { TextareaField } from "@/components/ui/form";
 import { DotLoader } from "@/components/ui/loader";
 import { cancelBooking } from "@/lib/actions/bookings";
@@ -37,28 +36,27 @@ export function CancelBooking({ booking, token }: { booking: Booking; token: str
     });
   }
 
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)} className="shrink-0 font-semibold text-foreground underline-offset-4 hover:text-danger hover:underline">
+        Cancel booking
+      </button>
+    );
+  }
+
+  // The refund outcome is shown at the moment it matters: when confirming.
   return (
-    <Card>
-      <CardHeader title="Need to cancel?" description={outcome} />
-      <div className="space-y-4 p-5 sm:p-6">
-        {open ? (
-          <>
-            <TextareaField label="Reason" name="reason" rows={2} value={reason} onChange={(event) => setReason(event.target.value)} hint="Optional. Helps us improve." />
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Button variant="danger" onClick={confirm} disabled={pending}>
-                {pending ? <DotLoader className="text-current" label="Cancelling" /> : "Yes, cancel my booking"}
-              </Button>
-              <Button variant="outline" onClick={() => setOpen(false)} disabled={pending}>
-                Keep my booking
-              </Button>
-            </div>
-          </>
-        ) : (
-          <Button variant="outline" onClick={() => setOpen(true)}>
-            Cancel booking
-          </Button>
-        )}
+    <div className="w-full space-y-3 sm:max-w-sm">
+      <p className="font-semibold text-foreground">{outcome}</p>
+      <TextareaField label="Reason" name="reason" rows={2} value={reason} onChange={(event) => setReason(event.target.value)} hint="Optional. Helps us improve." />
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Button variant="danger" size="sm" onClick={confirm} disabled={pending}>
+          {pending ? <DotLoader className="text-current" label="Cancelling" /> : "Yes, cancel it"}
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => setOpen(false)} disabled={pending}>
+          Keep my booking
+        </Button>
       </div>
-    </Card>
+    </div>
   );
 }

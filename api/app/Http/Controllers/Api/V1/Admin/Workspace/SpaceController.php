@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\Workspace\SpaceRequest;
 use App\Http\Resources\SpaceResource;
 use App\Models\Space;
 use App\Support\Slug;
+use App\Uploads\UploadLimit;
 use App\Workspace\OpeningHours;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -65,7 +66,10 @@ class SpaceController extends Controller
 
     public function photo(Request $request, Space $space): SpaceResource
     {
-        $request->validate(['photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120', 'dimensions:min_width=600,min_height=400']]);
+        $request->validate(
+            ['photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', UploadLimit::rule(), 'dimensions:min_width=600,min_height=400']],
+            ['photo.max' => UploadLimit::message('The photo')],
+        );
 
         $old = $space->photo_path;
         $space->forceFill(['photo_path' => $request->file('photo')->store('spaces', 'public')])->save();

@@ -224,6 +224,10 @@ export type Invoice = {
   currency: string;
   subtotal: number;
   total: number;
+  /** Discount code on the invoice; its discount is already taken off `total`. */
+  coupon_code: string | null;
+  coupon_discount: number;
+  accepts_coupon: boolean;
   amount_paid: number;
   amount_refunded: number;
   balance: number;
@@ -449,6 +453,9 @@ export type MembershipPlan = {
   billing_period: "month" | "quarter" | "year";
   booking_discount_percent: number;
   perks: string[];
+  /** Virtual office: members get a mailbox at this location. */
+  mailbox_location_id: number | null;
+  mailbox_location?: string | null;
   is_featured: boolean;
   is_active: boolean;
   sort_order: number;
@@ -652,4 +659,77 @@ export type ActivityLogEntry = {
   user_agent: string | null;
   user: { id: number; name: string; email: string; type: string } | null;
   created_at: string;
+};
+
+/* ---------- Coupons (money in kobo) ---------- */
+
+export type CouponAppliesTo = "all" | "services" | "bookings" | "plans";
+
+export type Coupon = {
+  id: number;
+  code: string;
+  description: string | null;
+  discount_type: "percent" | "fixed";
+  /** Percent (1 to 100) or kobo. */
+  discount_value: number;
+  max_discount: number | null;
+  min_spend: number | null;
+  label: string;
+  applies_to: CouponAppliesTo;
+  max_uses: number | null;
+  max_uses_per_customer: number | null;
+  starts_at: string | null;
+  expires_at: string | null;
+  is_active: boolean;
+  state: "active" | "scheduled" | "expired" | "used_up" | "off";
+  uses: number;
+  paid_uses: number;
+  discount_given: number;
+  created_by?: string | null;
+  created_at: string | null;
+};
+
+/* ---------- Virtual office ---------- */
+
+export type MailAction = "collect" | "forward" | "scan" | "shred";
+export type MailOutcome = "collected" | "forwarded" | "shredded";
+
+export type MailItem = {
+  id: number;
+  kind: "letter" | "parcel" | "official";
+  kind_label: string;
+  sender: string | null;
+  description: string | null;
+  received_at: string;
+  status: "waiting" | MailOutcome;
+  status_label: string;
+  requested_action: MailAction | null;
+  request_label: string | null;
+  request_note: string | null;
+  requested_at: string | null;
+  has_scan: boolean;
+  scanned_at: string | null;
+  handled_at: string | null;
+  handled_note: string | null;
+  handled_by?: string | null;
+  logged_by?: string | null;
+  mailbox?: { id: number; number: string; business_name: string; customer: { id: number; name: string; email: string } | null };
+};
+
+export type Mailbox = {
+  id: number;
+  number: string;
+  business_name: string;
+  state: "active" | "lapsed" | "closed";
+  status: "active" | "closed";
+  active_until: string | null;
+  address_lines?: string[];
+  location?: { id: number; name: string; address: string; city: string; state: string };
+  membership?: { id: number; name: string; ends_at: string | null } | null;
+  waiting_count?: number;
+  request_count?: number;
+  notes?: string | null;
+  customer?: { id: number; name: string; email: string; phone: string | null };
+  items?: MailItem[];
+  created_at: string | null;
 };

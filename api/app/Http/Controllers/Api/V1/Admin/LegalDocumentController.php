@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Notifications\DocumentNotification;
 use App\Support\AgreementData;
 use App\Support\Signatory;
+use App\Uploads\UploadLimit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -155,7 +156,7 @@ class LegalDocumentController extends Controller
         return [
             'title' => ['required', 'string', 'max:150'],
             'description' => ['nullable', 'string', 'max:2000'],
-            'file' => [$creating ? 'required' : 'prohibited', 'file', 'mimes:pdf', 'max:10240'],
+            'file' => [$creating ? 'required' : 'prohibited', 'file', 'mimes:pdf', UploadLimit::rule()],
             'audience' => ['required', Rule::in(LegalDocument::AUDIENCES)],
             'user_ids' => ['required_if:audience,selected', 'array'],
             'user_ids.*' => ['integer'],
@@ -170,7 +171,7 @@ class LegalDocumentController extends Controller
     {
         return [
             'file.mimes' => 'Upload the document as a PDF.',
-            'file.max' => 'The PDF must be 10MB or smaller.',
+            'file.max' => UploadLimit::message('The PDF'),
             'user_ids.required_if' => 'Choose at least one client to sign it.',
         ];
     }

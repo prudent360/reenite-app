@@ -86,7 +86,9 @@ async function InvoiceView({ id }: { id: string }) {
         <div className="space-y-4 xl:sticky xl:top-24">
           {invoice.status === "paid" && (
             <Alert tone="success" icon={CircleCheck} title="Paid in full">
-              Thank you! Your receipt is listed under payment attempts.
+              {invoice.total === 0 && invoice.coupon_code
+                ? `Covered in full by the code ${invoice.coupon_code}. There's nothing to pay.`
+                : "Thank you! Your receipt is listed under payment attempts."}
             </Alert>
           )}
           {invoice.status === "void" && (

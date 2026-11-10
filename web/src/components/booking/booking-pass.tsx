@@ -7,11 +7,12 @@ import { ApiError, api } from "@/lib/api";
 import { BOOKING_TIMEZONE, formatBookingTime } from "@/lib/booking-format";
 import type { Booking } from "@/lib/types";
 import { formatNaira } from "@/lib/utils";
+import { CheckInQr } from "./check-in-qr";
 
 const longDate = new Intl.DateTimeFormat("en-NG", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: BOOKING_TIMEZONE });
 
 /**
- * The pass a customer shows at the front desk: a ticket with the check-in code, which prints or
+ * The pass a customer shows at the front desk: a ticket with a QR code and the check-in code, which prints or
  * saves as a PDF on its own (the app's sidebar and header are hidden when printing).
  */
 export async function BookingPass({ reference, token, backHref }: { reference: string; token: string; backHref: string }) {
@@ -85,12 +86,14 @@ export async function BookingPass({ reference, token, backHref }: { reference: s
 
         <div className="px-6 pb-6 pt-3 text-center">
           <p className="flex items-center justify-center gap-1.5 text-sm font-semibold text-[#5c6488]">
-            <ScanLine className="size-4 text-[#f05a28]" /> Show this code at the front desk
+            <ScanLine className="size-4 text-[#f05a28]" /> Show this at the front desk
           </p>
-          <p className="mt-3 font-mono text-5xl font-bold tracking-[0.25em]">{booking.check_in_code}</p>
+          <CheckInQr code={booking.check_in_code} className="mx-auto mt-4 size-44 [&>svg]:size-full" />
+          <p className="mt-4 text-xs text-[#5c6488]">Or give this code</p>
+          <p className="mt-1 font-mono text-4xl font-bold tracking-[0.25em]">{booking.check_in_code}</p>
           <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-1 text-xs text-[#5c6488]">
             <span>Booking {booking.reference}</span>
-            <span>{booking.paid_via === "pass" ? "Paid with pass credits" : booking.total > 0 ? `Paid ${formatNaira(booking.total)}` : "No charge"}</span>
+            <span>{booking.paid_via === "pass" ? "Paid with pass credits" : (booking.invoice?.total ?? booking.total) > 0 ? `Paid ${formatNaira(booking.invoice?.total ?? booking.total)}` : "No charge"}</span>
             {booking.checked_in_at && <span className="font-semibold text-[#12805c]">Checked in</span>}
           </div>
         </div>
