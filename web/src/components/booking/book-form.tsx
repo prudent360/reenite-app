@@ -8,9 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Alert, Card, CardHeader } from "@/components/ui/card";
 import { TextField, TextareaField } from "@/components/ui/form";
 import { DotLoader } from "@/components/ui/loader";
-import { createBooking, getAvailability, getQuote, type BookingInput } from "@/lib/actions/bookings";
+import { createBooking, getAvailability, getQuote, getSeatMap, type BookingInput } from "@/lib/actions/bookings";
 import { bookingToday, formatWhen } from "@/lib/booking-format";
-import type { BookingQuote, DayAvailability, RateUnit, Space, User } from "@/lib/types";
+import type { BookingQuote, DayAvailability, RateUnit, SeatMap, Space, User } from "@/lib/types";
 import { cn, formatNaira } from "@/lib/utils";
 import { formatMinutes, formatTime as formatClock, rateUnits } from "@/lib/workspace";
 
@@ -18,7 +18,7 @@ const maxQuantity: Record<RateUnit, number> = { hour: 12, day: 14, week: 8, mont
 const unitLabel: Record<RateUnit, string> = { hour: "hour", day: "day", week: "week", month: "month" };
 
 /** Fields that belong to the Time step; an error on one sends the customer back there. */
-const TIME_FIELDS = ["date", "start_time", "rate_unit", "quantity", "seats", "addons"];
+const TIME_FIELDS = ["date", "start_time", "rate_unit", "quantity", "seats", "seat_ids", "addons"];
 
 /**
  * Steps two and three of booking. "time": duration, date, start time, people and extras, priced
@@ -52,6 +52,11 @@ export function BookForm({
   const [startTime, setStartTime] = useState<string | null>(null);
   const [addons, setAddons] = useState<Record<number, number>>({});
   const [usePass, setUsePass] = useState(false);
+  // Hot desks with named seats: "any free seat" unless the customer picks.
+  const [seatMode, setSeatMode] = useState<"any" | "choose">("any");
+  const [pickedSeats, setPickedSeats] = useState<number[]>([]);
+  const [seatMap, setSeatMap] = useState<SeatMap | null>(null);
+  const [loadingSeats, startSeats] = useTransition();
   const [details, setDetails] = useState({ name: "", email: "", phone: "", notes: "" });
 
   const [day, setDay] = useState<DayAvailability | null>(null);
@@ -81,6 +86,27 @@ export function BookForm({
   const chosenStart = startTime && starts.some((start) => start.time === startTime) ? startTime : null;
   const needsStart = hourly && !chosenStart;
 
+  // The seat map for the chosen time, once the time is complete.
+  useEffect(() => {
+    if (!shared || needsStart) {
+      return;
+    }
+    startSeats(async () => {
+      const result = await getSeatMap(space.slug, { date, start_time: hourly ? chosenStart : null, rate_unit: unit, quantity });
+      setSeatMap(result.ok ? (result.data ?? null) : null);
+    });
+  }, [shared, needsStart, space.slug, date, hourly, chosenStart, unit, quantity]);
+
+  const shownSeatMap = shared && !needsStart ? seatMap : null;
+  const hasSeats = (shownSeatMap?.seats.length ?? 0) > 0;
+  // Picks stop counting once that seat is taken for the new time, or there are more picks than people.
+  const validPicks = useMemo(
+    () => pickedSeats.filter((id) => shownSeatMap?.seats.some((seat) => seat.id === id && seat.available)).slice(0, seats),
+    [pickedSeats, shownSeatMap, seats],
+  );
+  const choosing = hasSeats && seatMode === "choose";
+  const seatsMissing = choosing ? seats - validPicks.length : 0;
+
   const input: BookingInput = useMemo(
     () => ({
       space: space.slug,
@@ -89,10 +115,11 @@ export function BookForm({
       rate_unit: unit,
       quantity,
       seats,
+      seat_ids: choosing && seatsMissing === 0 ? validPicks : [],
       addons: Object.entries(addons).filter(([, count]) => count > 0).map(([id, count]) => ({ id: Number(id), quantity: count })),
       use_pass: usePass,
     }),
-    [space.slug, date, unit, hourly, chosenStart, quantity, seats, addons, usePass],
+    [space.slug, date, unit, hourly, chosenStart, quantity, seats, choosing, seatsMissing, validPicks, addons, usePass],
   );
 
   // Live price whenever the booking changes and is complete enough to price.
@@ -140,7 +167,8 @@ export function BookForm({
     const minutes = count * 60;
     return minutes >= space.min_duration_minutes && (!space.max_duration_minutes || minutes <= space.max_duration_minutes);
   });
-  const ready = shownQuote !== null && !pricing;
+  const ready = shownQuote !== null && !pricing && seatsMissing === 0;
+  const seatLabels = (shownSeatMap?.seats ?? []).filter((seat) => validPicks.includes(seat.id)).map((seat) => seat.label);
   const fieldError = (key: string) => errors[key]?.[0];
 
   const holdLabel = shownQuote?.requires_approval
@@ -169,6 +197,7 @@ export function BookForm({
                   <dt className="sr-only">People</dt>
                   <dd>
                     {seats} {seats === 1 ? "person" : "people"}
+                    {hasSeats && <span className="text-muted"> · {choosing && seatLabels.length > 0 ? seatLabels.join(", ") : "any free seat"}</span>}
                   </dd>
                 </div>
               </dl>
@@ -345,6 +374,8 @@ export function BookForm({
           </Card>
         )}
 
+        {shared && (loadingSeats || hasSeats) && seatPicker()}
+
         {(space.addons ?? []).length > 0 && (
           <Card>
             <CardHeader title="Extras" description="Optional. Charged with your booking." />
@@ -390,6 +421,94 @@ export function BookForm({
           </Button>
         </div>
       </>
+    );
+  }
+
+  function seatPicker() {
+    const zones = Array.from(new Set((shownSeatMap?.seats ?? []).map((seat) => seat.zone ?? "")));
+    const toggle = (id: number) =>
+      setPickedSeats(() => {
+        if (validPicks.includes(id)) return validPicks.filter((picked) => picked !== id);
+        // One seat per person: with the limit reached, the newest pick replaces the oldest.
+        return [...validPicks, id].slice(-seats);
+      });
+
+    return (
+      <Card>
+        <CardHeader title="Seat" description={shownSeatMap?.free != null ? `${shownSeatMap.free} of ${shownSeatMap.seats.length} free at that time.` : undefined} />
+        <div className="space-y-4 p-5 sm:p-6">
+          {loadingSeats && !hasSeats ? (
+            <DotLoader label="Checking free seats" />
+          ) : (
+            <>
+              <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Seat">
+                {(
+                  [
+                    { mode: "any", title: "Any free seat", body: "We'll give you one when you book." },
+                    { mode: "choose", title: seats === 1 ? "Choose my seat" : "Choose our seats", body: "Pick from the free seats below." },
+                  ] as const
+                ).map((option) => (
+                  <button
+                    key={option.mode}
+                    type="button"
+                    role="radio"
+                    aria-checked={seatMode === option.mode}
+                    onClick={() => setSeatMode(option.mode)}
+                    className={cn(
+                      "rounded-xl border p-3 text-left transition",
+                      seatMode === option.mode ? "border-brand-500 ring-1 ring-brand-500" : "border-border hover:border-navy-200",
+                    )}
+                  >
+                    <span className="block text-sm font-semibold text-foreground">{option.title}</span>
+                    <span className="block text-xs text-muted">{option.body}</span>
+                  </button>
+                ))}
+              </div>
+
+              {choosing && (
+                <div className={cn("space-y-4 transition-opacity", loadingSeats && "opacity-60")}>
+                  {zones.map((zone) => (
+                    <div key={zone || "seats"}>
+                      {zones.length > 1 && <p className="mb-2 text-xs font-semibold text-muted">{zone || "Other seats"}</p>}
+                      <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+                        {(shownSeatMap?.seats ?? [])
+                          .filter((seat) => (seat.zone ?? "") === zone)
+                          .map((seat) => {
+                            const picked = validPicks.includes(seat.id);
+                            return (
+                              <button
+                                key={seat.id}
+                                type="button"
+                                aria-pressed={picked}
+                                disabled={!seat.available}
+                                onClick={() => toggle(seat.id)}
+                                className={cn(
+                                  "rounded-xl border px-2 py-2.5 text-sm font-semibold transition",
+                                  !seat.available && "cursor-not-allowed border-dashed border-border bg-surface-muted text-muted line-through",
+                                  seat.available && !picked && "border-border bg-surface text-foreground hover:border-brand-500",
+                                  picked && "border-brand-500 bg-brand-500 text-white",
+                                )}
+                              >
+                                {seat.label}
+                                <span className="sr-only">{seat.available ? (picked ? ", chosen" : ", free") : ", taken"}</span>
+                              </button>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  ))}
+                  <p className={cn("text-[13px]", seatsMissing > 0 ? "text-muted" : "text-success")}>
+                    {seatsMissing > 0
+                      ? `Choose ${seatsMissing} more ${seatsMissing === 1 ? "seat" : "seats"}${seats > 1 ? `, one for each person` : ""}.`
+                      : `${seatLabels.join(", ")} ${seatLabels.length === 1 ? "is" : "are"} yours if you book now.`}
+                  </p>
+                </div>
+              )}
+              {fieldError("seat_ids") && <p className="text-[13px] text-danger">{fieldError("seat_ids")}</p>}
+            </>
+          )}
+        </div>
+      </Card>
     );
   }
 

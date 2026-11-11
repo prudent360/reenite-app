@@ -33,16 +33,22 @@ enum EmailTemplateKey: string
     case MembershipRenewalDue = 'membership_renewal_due';
     case MailReceived = 'mail_received';
     case MailScanned = 'mail_scanned';
+    case ComplianceDueSoon = 'compliance_due_soon';
+    case ComplianceOverdue = 'compliance_overdue';
+    case ConsultationConfirmed = 'consultation_confirmed';
+    case ConsultationReminder = 'consultation_reminder';
+    case ConsultationCancelled = 'consultation_cancelled';
     case DocumentToSign = 'document_to_sign';
     case StaffOrderAssigned = 'staff_order_assigned';
     case StaffTransferToReview = 'staff_transfer_to_review';
     case StaffNewBooking = 'staff_new_booking';
     case StaffMailRequest = 'staff_mail_request';
+    case StaffNewConsultation = 'staff_new_consultation';
 
     /**
      * Groups in the order the editor lists them.
      */
-    public const GROUPS = ['Account', 'Billing', 'Orders', 'Bookings', 'Passes and memberships', 'Virtual office', 'Documents', 'Staff alerts'];
+    public const GROUPS = ['Account', 'Billing', 'Orders', 'Bookings', 'Passes and memberships', 'Virtual office', 'Compliance', 'Consultations', 'Documents', 'Staff alerts'];
 
     public function group(): string
     {
@@ -54,7 +60,9 @@ enum EmailTemplateKey: string
             self::BookingCancelled, self::GuestAccountInvite => 'Bookings',
             self::PassActivated, self::PassExpiring, self::MembershipActivated, self::MembershipRenewalDue => 'Passes and memberships',
             self::MailReceived, self::MailScanned => 'Virtual office',
-            self::StaffOrderAssigned, self::StaffTransferToReview, self::StaffNewBooking, self::StaffMailRequest => 'Staff alerts',
+            self::ComplianceDueSoon, self::ComplianceOverdue => 'Compliance',
+            self::ConsultationConfirmed, self::ConsultationReminder, self::ConsultationCancelled => 'Consultations',
+            self::StaffOrderAssigned, self::StaffTransferToReview, self::StaffNewBooking, self::StaffMailRequest, self::StaffNewConsultation => 'Staff alerts',
             self::DocumentToSign => 'Documents',
         };
     }
@@ -91,6 +99,12 @@ enum EmailTemplateKey: string
             self::DocumentToSign => 'Document to sign',
             self::MailReceived => 'New mail arrived',
             self::MailScanned => 'Mail scanned',
+            self::ComplianceDueSoon => 'Deadline coming up',
+            self::ComplianceOverdue => 'Deadline missed',
+            self::ConsultationConfirmed => 'Consultation confirmed',
+            self::ConsultationReminder => 'Consultation reminder',
+            self::ConsultationCancelled => 'Consultation cancelled',
+            self::StaffNewConsultation => 'New consultation booked',
             self::StaffMailRequest => 'Mail request from a customer',
         };
     }
@@ -127,6 +141,12 @@ enum EmailTemplateKey: string
             self::DocumentToSign => 'Sent when the team shares an agreement for the customer to read and sign online.',
             self::MailReceived => 'Sent when the front desk logs a letter or parcel for a virtual office customer.',
             self::MailScanned => 'Sent when a scan of a letter is ready to view.',
+            self::ComplianceDueSoon => 'Sent 14 days and 3 days before a filing deadline on the customer\'s compliance calendar.',
+            self::ComplianceOverdue => 'Sent once, the day after a filing deadline passes without being marked done.',
+            self::ConsultationConfirmed => 'Sent when a consultation is paid for (or free) and confirmed.',
+            self::ConsultationReminder => 'Sent the day before a consultation.',
+            self::ConsultationCancelled => 'Sent when the customer or staff cancel a consultation.',
+            self::StaffNewConsultation => 'Sent to staff who manage consultations when one is confirmed.',
             self::StaffMailRequest => 'Tells the front desk a customer wants mail collected, forwarded, scanned or shredded.',
         };
     }
@@ -134,6 +154,28 @@ enum EmailTemplateKey: string
     /**
      * Sign-in depends on these; turning them off is allowed but the admin is warned.
      */
+    /**
+     * Events that can also go out on WhatsApp, with the values their approved WhatsApp template
+     * receives as {{1}}, {{2}}... in this order. Null means email only.
+     *
+     * @return list<string>|null
+     */
+    public function whatsappParameters(): ?array
+    {
+        return match ($this) {
+            self::BookingConfirmed => ['first_name', 'space_name', 'booking_date', 'booking_time', 'check_in_code'],
+            self::BookingReminder => ['first_name', 'space_name', 'booking_date', 'booking_time'],
+            self::InvoiceIssued => ['first_name', 'invoice_number', 'amount', 'due_date'],
+            self::OrderUpdated => ['first_name', 'service_name', 'order_reference', 'stage_name'],
+            self::InfoRequested => ['first_name', 'service_name', 'order_reference'],
+            self::OrderCompleted => ['first_name', 'service_name', 'order_reference'],
+            self::MailReceived => ['first_name', 'mail_kind', 'sender', 'mailbox_number'],
+            self::ComplianceDueSoon, self::ComplianceOverdue => ['first_name', 'deadline', 'business_name', 'due_date'],
+            self::ConsultationConfirmed, self::ConsultationReminder => ['first_name', 'consultation_name', 'consultation_date', 'consultation_time'],
+            default => null,
+        };
+    }
+
     public function isEssential(): bool
     {
         return in_array($this, [self::EmailVerification, self::PasswordReset, self::StaffInvite], true);
@@ -149,6 +191,9 @@ enum EmailTemplateKey: string
             'booking_reference' => 'Booking number', 'space_name' => 'Space', 'location_name' => 'Location',
             'location_address' => 'Location address', 'booking_date' => 'Date', 'booking_time' => 'Start and end time', 'guests' => 'Number of people',
         ];
+
+        $compliance = ['business_name' => 'Business', 'deadline' => 'What is due, e.g. File VAT return', 'period' => 'Period it covers, e.g. October 2026', 'due_date' => 'Due date', 'days_left' => 'e.g. "in 3 days" or "2 days ago"', 'authority' => 'Who it is filed with'];
+        $consultation = ['consultation_reference' => 'Consultation number', 'consultation_name' => 'Type of consultation', 'consultation_date' => 'Date', 'consultation_time' => 'Start and end time', 'consultation_mode' => 'In person, video call or phone call', 'meeting_details' => 'Where or how to join', 'topic' => 'What they want to discuss'];
 
         $mail = ['mailbox_number' => 'Mailbox number, e.g. RN-0012', 'business_name' => 'Name on the mailbox', 'mail_kind' => 'Letter, parcel or official letter', 'sender' => 'Who sent it', 'received_date' => 'Date it arrived'];
 
@@ -180,6 +225,10 @@ enum EmailTemplateKey: string
             self::DocumentToSign => $common + ['document_title' => 'Name of the document'],
             self::MailReceived, self::MailScanned => $common + $mail,
             self::StaffMailRequest => $common + $mail + ['customer_name' => 'Customer', 'request' => 'What they asked for', 'request_note' => 'Their note, e.g. a forwarding address'],
+            self::ComplianceDueSoon, self::ComplianceOverdue => $common + $compliance,
+            self::ConsultationConfirmed, self::ConsultationReminder => $common + $consultation,
+            self::ConsultationCancelled => $common + $consultation + ['refund_amount' => 'Refund due (or "No refund")', 'reason' => 'Why it was cancelled'],
+            self::StaffNewConsultation => $common + $consultation + ['customer_name' => 'Customer', 'amount' => 'Amount paid'],
         };
     }
 
@@ -390,6 +439,48 @@ enum EmailTemplateKey: string
                 'heading' => 'Hi {{first_name}},',
                 'body' => "We've scanned the {{mail_kind}} from {{sender}} that arrived on {{received_date}}. You can read it in your mailbox now.\n\nWe're still holding the original. Let us know if you'd like it collected, forwarded or shredded.",
                 'button_text' => 'Read the scan',
+                'footer' => null,
+            ],
+            self::ComplianceDueSoon => [
+                'subject' => '{{deadline}} for {{business_name}} is due {{days_left}}',
+                'heading' => 'Hi {{first_name}},',
+                'body' => "A deadline for {{business_name}} is coming up:\n\n{{deadline}} ({{period}}), due {{due_date}}, {{days_left}}. It is filed with the {{authority}}.\n\nIf it's already done, mark it done on your compliance calendar. If you'd like us to handle it, message your officer.",
+                'button_text' => 'Open my compliance calendar',
+                'footer' => 'Dates are worked out from your business details. Your officer can confirm the exact date.',
+            ],
+            self::ComplianceOverdue => [
+                'subject' => 'Missed deadline: {{deadline}} for {{business_name}}',
+                'heading' => 'Hi {{first_name}},',
+                'body' => "{{deadline}} ({{period}}) for {{business_name}} was due on {{due_date}} and isn't marked done yet.\n\nLate filing can attract penalties from the {{authority}}, so it's worth sorting out soon. We can file it for you: message your officer and we'll take it from there.",
+                'button_text' => 'See what to do',
+                'footer' => 'Already filed it? Mark it done on your compliance calendar and we will stop reminding you.',
+            ],
+            self::ConsultationConfirmed => [
+                'subject' => 'Confirmed: {{consultation_name}} on {{consultation_date}}',
+                'heading' => "You're booked in, {{first_name}}",
+                'body' => "Your {{consultation_name}} is confirmed.\n\nWhen: {{consultation_date}}, {{consultation_time}}\nHow: {{consultation_mode}}\n{{meeting_details}}\n\nYou said you'd like to discuss: {{topic}}\n\nReference: {{consultation_reference}}",
+                'button_text' => 'View my consultation',
+                'footer' => 'Need to change it? Cancel from your dashboard at least 24 hours before for a full refund.',
+            ],
+            self::ConsultationReminder => [
+                'subject' => 'Tomorrow: {{consultation_name}} at {{consultation_time}}',
+                'heading' => 'See you tomorrow, {{first_name}}',
+                'body' => "A reminder about your {{consultation_name}} on {{consultation_date}}, {{consultation_time}}.\n\nHow: {{consultation_mode}}\n{{meeting_details}}\n\nHave any documents you want to discuss to hand.",
+                'button_text' => 'View my consultation',
+                'footer' => null,
+            ],
+            self::ConsultationCancelled => [
+                'subject' => 'Cancelled: {{consultation_name}} on {{consultation_date}}',
+                'heading' => 'Hi {{first_name}},',
+                'body' => "Your {{consultation_name}} on {{consultation_date}}, {{consultation_time}} ({{consultation_reference}}) has been cancelled.\n\nReason: {{reason}}\nRefund: {{refund_amount}}",
+                'button_text' => 'Book another time',
+                'footer' => 'Refunds to a card usually arrive within 5 to 10 working days.',
+            ],
+            self::StaffNewConsultation => [
+                'subject' => 'New consultation: {{consultation_name}} on {{consultation_date}}',
+                'heading' => 'Hi {{first_name}},',
+                'body' => "{{customer_name}} booked a {{consultation_name}} ({{consultation_reference}}).\n\nWhen: {{consultation_date}}, {{consultation_time}}\nHow: {{consultation_mode}}\nPaid: {{amount}}\nTopic: {{topic}}\n\nAssign an officer and, for video calls, add the meeting link.",
+                'button_text' => 'Open the consultation',
                 'footer' => null,
             ],
             self::StaffMailRequest => [

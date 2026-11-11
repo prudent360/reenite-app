@@ -88,3 +88,16 @@ export async function previewEmailTemplate(key: string, input: TemplateInput): P
 export async function sendTemplateTest(key: string) {
   return run(() => api<{ message: string }>(`/admin/settings/email-templates/${key}/test`, { method: "POST" }), (data) => data.message);
 }
+
+/* ---------- WhatsApp ---------- */
+
+export async function saveWhatsAppSettings(input: { enabled: boolean; phone_number_id: string | null; access_token: string | null; language: string; templates: Record<string, string> }) {
+  return run(() => api<{ message: string }>("/admin/settings/whatsapp", { method: "PUT", body: input }), (data) => data.message);
+}
+
+export async function sendWhatsAppTest(to: string, event: string | null) {
+  return run(
+    () => api<{ message: string }>("/admin/settings/whatsapp/test", { method: "POST", body: { to, event } }),
+    (data) => data.message,
+  );
+}

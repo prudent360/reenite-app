@@ -75,3 +75,39 @@ export async function removeSpacePhoto(spaceId: number): Promise<FormState> {
   refresh();
   return { ok: true, message: "Photo removed." };
 }
+
+/* ---------- Seats (hot desks) ---------- */
+
+/** Adds a run of numbered seats, e.g. "Desk" × 10 gives Desk 1 to Desk 10 (or carries on from the last number). */
+export async function addSpaceSeats(spaceId: number, input: { prefix: string; count: number; zone: string }): Promise<FormState> {
+  try {
+    await api(`/admin/workspace/spaces/${spaceId}/seats`, { method: "POST", body: { prefix: input.prefix, count: input.count, zone: input.zone || null } });
+  } catch (error) {
+    return toFormState(error);
+  }
+  updateTag(WORKSPACE_TAG);
+  refresh();
+  return { ok: true, message: input.count === 1 ? "Seat added." : `${input.count} seats added.` };
+}
+
+export async function updateSpaceSeat(spaceId: number, seatId: number, body: { label?: string; zone?: string | null; is_active?: boolean }): Promise<FormState> {
+  try {
+    await api(`/admin/workspace/spaces/${spaceId}/seats/${seatId}`, { method: "PATCH", body });
+  } catch (error) {
+    return toFormState(error);
+  }
+  updateTag(WORKSPACE_TAG);
+  refresh();
+  return { ok: true, message: "Seat saved." };
+}
+
+export async function deleteSpaceSeat(spaceId: number, seatId: number): Promise<FormState> {
+  try {
+    await api(`/admin/workspace/spaces/${spaceId}/seats/${seatId}`, { method: "DELETE" });
+  } catch (error) {
+    return toFormState(error);
+  }
+  updateTag(WORKSPACE_TAG);
+  refresh();
+  return { ok: true, message: "Seat deleted." };
+}

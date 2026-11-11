@@ -60,6 +60,16 @@ class User extends Authenticatable implements MustVerifyEmail
     protected string $guard_name = 'web';
 
     /**
+     * New accounts haven't agreed to WhatsApp updates. Set here so the value is present on a
+     * freshly created model too (strict mode refuses to read attributes that were never loaded).
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'whatsapp_opt_in_at' => null,
+    ];
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -69,9 +79,18 @@ class User extends Authenticatable implements MustVerifyEmail
         return [
             'email_verified_at' => 'datetime',
             'phone_verified_at' => 'datetime',
+            'whatsapp_opt_in_at' => 'datetime',
             'last_login_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * Agreed to WhatsApp updates and has a number to send them to.
+     */
+    public function wantsWhatsApp(): bool
+    {
+        return $this->whatsapp_opt_in_at !== null && filled($this->phone);
     }
 
     public function isStaff(): bool
@@ -126,6 +145,22 @@ class User extends Authenticatable implements MustVerifyEmail
     public function invoices(): HasMany
     {
         return $this->hasMany(Invoice::class);
+    }
+
+    /**
+     * @return HasMany<Consultation, $this>
+     */
+    public function consultations(): HasMany
+    {
+        return $this->hasMany(Consultation::class);
+    }
+
+    /**
+     * @return HasMany<Business, $this>
+     */
+    public function businesses(): HasMany
+    {
+        return $this->hasMany(Business::class);
     }
 
     /**

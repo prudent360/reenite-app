@@ -241,7 +241,8 @@ class BookingTest extends TestCase
         $this->postJson("/api/v1/bookings/{$booking->reference}/coupon", ['code' => 'COMP', 'token' => $token])
             ->assertOk()
             ->assertJsonPath('data.status', 'confirmed')
-            ->assertJsonPath('data.invoice.status', 'paid');
+            ->assertJsonPath('data.invoice.status', 'paid')
+            ->assertJsonPath('data.paid_via', 'coupon');
         $this->assertNotNull($booking->refresh()->check_in_code);
     }
 

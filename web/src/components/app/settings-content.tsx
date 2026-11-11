@@ -5,7 +5,7 @@ import { PasswordForm, ProfileForm } from "./profile-forms";
 export function SettingsContent({ user }: { user: User }) {
   return (
     <div className="grid max-w-3xl gap-6">
-      <ProfileForm user={{ name: user.name, email: user.email, phone: user.phone }} />
+      <ProfileForm user={{ name: user.name, email: user.email, phone: user.phone, whatsapp_updates: user.whatsapp_updates }} whatsapp={user.type === "customer"} />
       <PasswordForm />
     </div>
   );

@@ -76,7 +76,7 @@ export function DayTimeline({ day }: { day: AdminBookingDay }) {
                       <span className="block truncate font-semibold">{booking.customer}</span>
                       <span className="block truncate opacity-80">
                         {formatBookingTime(booking.starts_at)}
-                        {space.is_shared ? ` · ${booking.seats} seat${booking.seats === 1 ? "" : "s"}` : ""}
+                        {space.is_shared ? ` · ${booking.seat_labels || `${booking.seats} seat${booking.seats === 1 ? "" : "s"}`}` : ""}
                       </span>
                     </Link>
                   );

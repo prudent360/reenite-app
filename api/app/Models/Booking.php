@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
@@ -182,5 +183,24 @@ class Booking extends Model
     public function addons(): HasMany
     {
         return $this->hasMany(BookingAddon::class);
+    }
+
+    /**
+     * The named seats this booking holds (hot desks with seats set up). The `seats` column is the
+     * number of people; this is which seats they sit in.
+     *
+     * @return BelongsToMany<SpaceSeat, $this>
+     */
+    public function assignedSeats(): BelongsToMany
+    {
+        return $this->belongsToMany(SpaceSeat::class, 'booking_seat')->withTimestamps()->orderBy('sort_order')->orderBy('space_seats.id');
+    }
+
+    /**
+     * Seat labels for display, e.g. "Desk 4, Desk 5".
+     */
+    public function seatLabels(): string
+    {
+        return $this->assignedSeats->pluck('label')->implode(', ');
     }
 }

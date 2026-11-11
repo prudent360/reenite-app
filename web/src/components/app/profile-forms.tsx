@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { updatePassword, updateProfile } from "@/lib/actions/profile";
 import type { FormState, User } from "@/lib/types";
 import { Card, CardHeader } from "@/components/ui/card";
-import { SubmitButton, TextField } from "@/components/ui/form";
+import { SubmitButton, SwitchField, TextField } from "@/components/ui/form";
 
 /** Toast the action's message whenever a new result arrives. */
 function useResultToast(state: FormState) {
@@ -18,7 +18,8 @@ function useResultToast(state: FormState) {
   }, [state]);
 }
 
-export function ProfileForm({ user }: { user: Pick<User, "name" | "email" | "phone"> }) {
+/** `whatsapp` shows the WhatsApp updates switch (customers only). */
+export function ProfileForm({ user, whatsapp = false }: { user: Pick<User, "name" | "email" | "phone" | "whatsapp_updates">; whatsapp?: boolean }) {
   const [state, action] = useActionState<FormState, FormData>(updateProfile, {});
   useResultToast(state);
 
@@ -38,6 +39,17 @@ export function ProfileForm({ user }: { user: Pick<User, "name" | "email" | "pho
           />
         </div>
         <TextField label="Email address" name="email_display" type="email" defaultValue={user.email} disabled hint="Contact support to change your email." />
+        {whatsapp && (
+          <div className="rounded-xl border border-border p-4">
+            <input type="hidden" name="whatsapp_field" value="1" />
+            <SwitchField
+              name="whatsapp_updates"
+              label="Send me updates on WhatsApp"
+              description="Booking confirmations, order progress, deadline reminders and new mail, sent to the phone number above. You can turn this off any time."
+              defaultChecked={user.whatsapp_updates ?? false}
+            />
+          </div>
+        )}
         <div className="flex justify-end">
           <SubmitButton>Save changes</SubmitButton>
         </div>

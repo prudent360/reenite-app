@@ -85,6 +85,26 @@ class FrontendLinks
         return self::base().'/admin/mail';
     }
 
+    public static function compliance(?int $businessId = null): string
+    {
+        return self::base().'/dashboard/businesses'.($businessId ? '/'.$businessId : '');
+    }
+
+    public static function consultation(string $reference): string
+    {
+        return self::base().'/dashboard/consultations/'.$reference;
+    }
+
+    public static function consultations(): string
+    {
+        return self::base().'/dashboard/consultations';
+    }
+
+    public static function adminConsultation(string $reference): string
+    {
+        return self::base().'/admin/consultations/'.$reference;
+    }
+
     public static function register(string $email): string
     {
         return self::base().'/register?'.http_build_query(['email' => $email]);

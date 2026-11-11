@@ -5,6 +5,8 @@ namespace App\Notifications;
 use App\Enums\EmailTemplateKey;
 use App\Models\EmailTemplate;
 use App\Models\User;
+use App\Notifications\Channels\WhatsAppChannel;
+use App\Support\WhatsApp;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Str;
@@ -12,6 +14,7 @@ use Illuminate\Support\Str;
 /**
  * An email whose wording comes from an admin-editable template.
  * If the template is switched off, the email isn't sent.
+ * Customers who opted in also get it on WhatsApp, when an approved template is set up for the event.
  */
 abstract class TemplatedNotification extends Notification
 {
@@ -34,7 +37,22 @@ abstract class TemplatedNotification extends Notification
      */
     public function via(object $notifiable): array
     {
-        return EmailTemplate::for($this->template())->is_enabled ? ['mail'] : [];
+        return array_values(array_filter([
+            EmailTemplate::for($this->template())->is_enabled ? 'mail' : null,
+            app(WhatsApp::class)->shouldSend($this->template(), $notifiable) ? WhatsAppChannel::class : null,
+        ]));
+    }
+
+    /**
+     * Values for the WhatsApp template's {{1}}, {{2}}..., in the order the event lists them.
+     *
+     * @return list<string>
+     */
+    public function toWhatsApp(User $notifiable): array
+    {
+        $values = $this->variables($notifiable) + self::nameVariables($notifiable->name) + ['app_name' => (string) config('app.name')];
+
+        return array_map(fn (string $placeholder) => (string) ($values[$placeholder] ?? ''), $this->template()->whatsappParameters() ?? []);
     }
 
     public function toMail(User $notifiable): MailMessage

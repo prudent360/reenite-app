@@ -11,6 +11,8 @@ export type User = {
   name: string;
   email: string;
   phone: string | null;
+  /** Agreed to updates on WhatsApp. */
+  whatsapp_updates?: boolean;
   type: "customer" | "staff";
   status: "active" | "suspended";
   avatar_url: string | null;
@@ -469,6 +471,12 @@ export type BookingSettings = { destination: "external" | "internal"; external_u
 
 export type WorkspaceCatalogue = { locations: Location[]; pass_plans: PassPlan[]; memberships: MembershipPlan[] };
 
+/** A named seat in a shared space (hot desk). */
+export type SpaceSeat = { id: number; space_id: number; label: string; zone: string | null; is_active: boolean; sort_order: number; bookings_count?: number };
+
+/** Seats for one time window. `free` is null when the space has no named seats. */
+export type SeatMap = { seats: { id: number; label: string; zone: string | null; available: boolean }[]; free: number | null; current?: number[] };
+
 export type DayAvailability = {
   date: string;
   closed: boolean;
@@ -502,6 +510,8 @@ export type Booking = {
   rate_unit: RateUnit;
   quantity: number;
   seats: number;
+  /** Named seats, on hot desks that have them set up. */
+  assigned_seats?: { id: number; label: string; zone: string | null }[];
   subtotal: number;
   addons_total: number;
   discount: number;
@@ -572,7 +582,7 @@ export type AdminBookingDay = {
       name: string;
       capacity: number;
       is_shared: boolean;
-      bookings: { reference: string; status: BookingStatus; status_label: string; starts_at: string; ends_at: string; seats: number; customer: string }[];
+      bookings: { reference: string; status: BookingStatus; status_label: string; starts_at: string; ends_at: string; seats: number; seat_labels?: string; customer: string }[];
     }[];
   }[];
 };
@@ -732,4 +742,125 @@ export type Mailbox = {
   customer?: { id: number; name: string; email: string; phone: string | null };
   items?: MailItem[];
   created_at: string | null;
+};
+
+/* ---------- Businesses and compliance ---------- */
+
+export type EntityType = "business_name" | "company" | "trustees";
+export type ComplianceState = "overdue" | "due_soon" | "upcoming" | "done" | "dismissed";
+
+export type ComplianceItem = {
+  id: number;
+  business_id: number;
+  kind: string;
+  kind_label: string;
+  authority: string | null;
+  title: string;
+  period_label: string | null;
+  /** YYYY-MM-DD */
+  due_on: string;
+  /** Negative once it's late. */
+  days_left: number;
+  state: ComplianceState;
+  status: "open" | "done" | "dismissed";
+  is_custom: boolean;
+  note: string | null;
+  completed_at: string | null;
+  /** The service that files it for them, when we offer one. */
+  service_slug: string | null;
+  business?: { id: number; name: string; owner: { id: number; name: string; email: string } | null };
+};
+
+export type BusinessHealth = {
+  score: number;
+  band: "good" | "attention" | "risk";
+  label: string;
+  issues: { text: string; points: number; kind: "overdue" | "due_soon" | "details" }[];
+};
+
+export type Business = {
+  id: number;
+  name: string;
+  entity_type: EntityType;
+  entity_type_label: string;
+  registration_number: string | null;
+  registered_on: string | null;
+  tin: string | null;
+  vat_registered: boolean;
+  has_employees: boolean;
+  financial_year_end_month: number;
+  state: string | null;
+  industry: string | null;
+  health?: BusinessHealth;
+  next_deadlines?: ComplianceItem[];
+  created_at: string;
+};
+
+/* ---------- Consultations ---------- */
+
+export type ConsultationMode = "in_person" | "video" | "phone";
+export type ConsultationStatus = "pending_payment" | "confirmed" | "completed" | "no_show" | "cancelled" | "expired";
+
+export type ConsultationType = {
+  id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+  duration_minutes: number;
+  price: number;
+  mode: ConsultationMode;
+  mode_label: string;
+  /** ISO weekday ("1" Monday to "7" Sunday) => [opens, closes] in Lagos time. */
+  schedule: Record<string, [string, string]>;
+  notice_hours: number;
+  is_active: boolean;
+  sort_order: number;
+  upcoming_count?: number;
+};
+
+export type Consultation = {
+  id: number;
+  reference: string;
+  name: string;
+  mode: ConsultationMode;
+  mode_label: string;
+  starts_at: string;
+  ends_at: string;
+  topic: string;
+  status: ConsultationStatus;
+  status_label: string;
+  hold_expires_at: string | null;
+  price: number;
+  meeting_details: string | null;
+  /** Unpaid, and the time is still held. */
+  hold_active: boolean;
+  /** Awaiting payment or confirmed, and not over yet. */
+  is_upcoming: boolean;
+  has_started: boolean;
+  can_cancel: boolean;
+  free_cancel_until: string;
+  /** Cancelling now gets a full refund. */
+  free_cancel: boolean;
+  cancelled_at: string | null;
+  cancel_reason: string | null;
+  refund_amount: number;
+  invoice?: Invoice | null;
+  officer?: { id: number; name: string } | null;
+  type?: { id: number; slug: string; name: string };
+  staff_notes?: string | null;
+  raw_meeting_details?: string | null;
+  customer?: { id: number; name: string; email: string; phone: string | null };
+  created_at: string;
+};
+
+/* ---------- WhatsApp ---------- */
+
+export type WhatsAppSettings = {
+  enabled: boolean;
+  phone_number_id: string | null;
+  access_token_set: boolean;
+  language: string;
+  configured: boolean;
+  opted_in_customers: number;
+  events: { key: string; name: string; group: string; template: string | null; parameters: { key: string; label: string }[] }[];
 };

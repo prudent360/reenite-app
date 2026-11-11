@@ -79,7 +79,7 @@ class BookingController extends Controller
         $booking = $this->bookings->create($space, $validated, $customer);
 
         return response()->json([
-            'data' => new BookingResource($booking->load(['space.location', 'addons', 'invoice.payments'])),
+            'data' => new BookingResource($booking->load(['space.location', 'addons', 'assignedSeats', 'invoice.payments'])),
             // The guest's key to this booking; signed-in customers can ignore it.
             'token' => $booking->manage_token,
         ], Response::HTTP_CREATED);
@@ -92,7 +92,7 @@ class BookingController extends Controller
     {
         $bookings = $request->user()->bookings()
             ->whereNotIn('status', [BookingStatus::Expired->value])
-            ->with(['space.location', 'invoice'])
+            ->with(['space.location', 'invoice', 'assignedSeats'])
             ->orderByRaw('case when ends_at >= ? then 0 else 1 end', [now()])
             ->orderByRaw('case when ends_at >= ? then starts_at end asc', [now()])
             ->orderByDesc('starts_at')
@@ -220,6 +220,9 @@ class BookingController extends Controller
             'rate_unit' => ['required', 'string', Rule::in(SpaceRate::UNITS)],
             'quantity' => ['required', 'integer', 'min:1', 'max:90'],
             'seats' => ['required', 'integer', 'min:1', 'max:1000'],
+            // Optional: the seats picked on a hot desk with named seats. Empty means "any free seat".
+            'seat_ids' => ['nullable', 'array', 'max:50'],
+            'seat_ids.*' => ['integer', 'distinct'],
             'addons' => ['nullable', 'array', 'max:20'],
             'addons.*.id' => ['required', 'integer'],
             'addons.*.quantity' => ['required', 'integer', 'min:0', 'max:100'],
@@ -271,7 +274,7 @@ class BookingController extends Controller
 
     private function present(Booking $booking): BookingResource
     {
-        $booking->loadMissing(['space.location', 'addons', 'invoice.payments']);
+        $booking->loadMissing(['space.location', 'addons', 'assignedSeats', 'invoice.payments']);
         $resource = new BookingResource($booking);
         if ($booking->status->isCancellable()) {
             $paid = $booking->invoice ? max(0, $booking->invoice->amount_paid - $booking->invoice->amount_refunded) : 0;

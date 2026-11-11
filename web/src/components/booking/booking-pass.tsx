@@ -61,8 +61,12 @@ export async function BookingPass({ reference, token, backHref }: { reference: s
               <dd className="mt-1 font-semibold">{formatBookingTime(booking.starts_at)} to {formatBookingTime(booking.ends_at)}</dd>
             </div>
             <div>
-              <dt className="flex items-center gap-1.5 text-[#5c6488]"><Users className="size-4" /> People</dt>
-              <dd className="mt-1 font-semibold">{booking.seats}</dd>
+              <dt className="flex items-center gap-1.5 text-[#5c6488]">
+                <Users className="size-4" /> {(booking.assigned_seats ?? []).length > 0 ? ((booking.assigned_seats ?? []).length === 1 ? "Seat" : "Seats") : "People"}
+              </dt>
+              <dd className="mt-1 font-semibold">
+                {(booking.assigned_seats ?? []).length > 0 ? (booking.assigned_seats ?? []).map((seat) => seat.label).join(", ") : booking.seats}
+              </dd>
             </div>
             <div>
               <dt className="flex items-center gap-1.5 text-[#5c6488]"><MapPin className="size-4" /> Address</dt>

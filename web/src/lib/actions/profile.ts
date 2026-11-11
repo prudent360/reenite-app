@@ -9,8 +9,10 @@ export async function updateProfile(_prev: FormState, formData: FormData): Promi
     name: String(formData.get("name") ?? "").trim(),
     phone: String(formData.get("phone") ?? "").trim(),
   };
+  // Customers' form carries the WhatsApp switch; staff's doesn't, so leave their choice alone.
+  const whatsapp = formData.has("whatsapp_field") ? { whatsapp_updates: formData.get("whatsapp_updates") === "on" } : {};
   try {
-    await api("/profile", { method: "PUT", body: { ...values, phone: values.phone || null } });
+    await api("/profile", { method: "PUT", body: { ...values, phone: values.phone || null, ...whatsapp } });
   } catch (error) {
     return toFormState(error, values);
   }

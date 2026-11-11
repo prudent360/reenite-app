@@ -19,6 +19,8 @@ class Availability
      */
     public const SLOT_MINUTES = 30;
 
+    public function __construct(private SeatPlanner $seatPlanner) {}
+
     /**
      * Turns what the customer picked into the start and end of the booking.
      *
@@ -143,7 +145,12 @@ class Availability
 
         // Counts everyone overlapping any part of the range, which can under-count free seats
         // when bookings don't overlap each other; it never over-books.
-        return (int) $overlapping->sum('seats') + $seats <= $space->capacity;
+        if ((int) $overlapping->sum('seats') + $seats > $space->capacity) {
+            return false;
+        }
+
+        // With named seats set up, there must also be enough free seats.
+        return ! $this->seatPlanner->usesSeats($space) || $this->seatPlanner->freeCount($space, $startsAt, $endsAt, $ignoreBookingId) >= $seats;
     }
 
     /**

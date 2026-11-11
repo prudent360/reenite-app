@@ -9,6 +9,7 @@ use App\Models\Booking;
 use App\Models\Location;
 use App\Models\Space;
 use App\Workspace\BookingService;
+use App\Workspace\SeatPlanner;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -67,7 +68,7 @@ class BookingController extends Controller
             ->whereIn('status', [BookingStatus::Held->value, BookingStatus::PendingApproval->value, BookingStatus::Confirmed->value, BookingStatus::CheckedIn->value, BookingStatus::Completed->value])
             ->where('starts_at', '<', $to)
             ->where('ends_at', '>', $from)
-            ->with('user')
+            ->with(['user', 'assignedSeats'])
             ->orderBy('starts_at')
             ->get()
             ->filter(fn (Booking $booking) => $booking->status !== BookingStatus::Held || $booking->isOccupying());
@@ -101,6 +102,7 @@ class BookingController extends Controller
                         'starts_at' => $booking->starts_at->toIso8601String(),
                         'ends_at' => $booking->ends_at->toIso8601String(),
                         'seats' => $booking->seats,
+                        'seat_labels' => $booking->seatLabels(),
                         'customer' => $booking->user->name,
                     ]),
                 ]),
@@ -110,7 +112,7 @@ class BookingController extends Controller
 
     public function show(Booking $booking): BookingResource
     {
-        $booking->load(['user', 'space.location', 'addons', 'invoice.payments', 'checkedInBy']);
+        $booking->load(['user', 'space.location', 'addons', 'assignedSeats', 'invoice.payments', 'checkedInBy']);
         $resource = new BookingResource($booking);
         if ($booking->status->isCancellable()) {
             $paid = $booking->invoice ? max(0, $booking->invoice->amount_paid - $booking->invoice->amount_refunded) : 0;
@@ -120,9 +122,32 @@ class BookingController extends Controller
         return $resource;
     }
 
+    /**
+     * The space's seats for this booking's time, so staff can move the booking to other free seats.
+     */
+    public function seats(SeatPlanner $seatPlanner, Booking $booking): JsonResponse
+    {
+        $space = $booking->space()->with('type')->firstOrFail();
+
+        return response()->json([
+            'data' => $seatPlanner->seatMap($space, CarbonImmutable::instance($booking->starts_at), CarbonImmutable::instance($booking->ends_at), $booking->id)
+                + ['current' => $booking->assignedSeats()->pluck('space_seats.id')],
+        ]);
+    }
+
+    public function moveSeats(Request $request, SeatPlanner $seatPlanner, Booking $booking): BookingResource
+    {
+        abort_unless($booking->status->isCancellable() && $booking->ends_at->isFuture(), 422, 'Only upcoming bookings can be moved to other seats.');
+        $validated = $request->validate(['seat_ids' => ['required', 'array', 'min:1', 'max:50'], 'seat_ids.*' => ['integer', 'distinct']]);
+
+        $seatPlanner->move($booking, $validated['seat_ids']);
+
+        return $this->show($booking->refresh());
+    }
+
     public function checkIn(Request $request, Booking $booking): BookingResource
     {
-        return new BookingResource($this->bookings->checkIn($booking, $request->user())->load(['user', 'space.location']));
+        return new BookingResource($this->bookings->checkIn($booking, $request->user())->load(['user', 'space.location', 'assignedSeats']));
     }
 
     /**

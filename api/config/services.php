@@ -18,6 +18,12 @@ return [
         'key' => env('POSTMARK_API_KEY'),
     ],
 
+    // WhatsApp Cloud API (Meta). Keys and templates are entered in Admin > Settings > WhatsApp.
+    'whatsapp' => [
+        'graph_url' => env('WHATSAPP_GRAPH_URL', 'https://graph.facebook.com'),
+        'graph_version' => env('WHATSAPP_GRAPH_VERSION', 'v23.0'),
+    ],
+
     'resend' => [
         'key' => env('RESEND_API_KEY'),
     ],

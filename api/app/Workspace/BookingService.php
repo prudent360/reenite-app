@@ -54,6 +54,7 @@ class BookingService
         private InvoiceService $invoices,
         private PaymentService $payments,
         private Settings $settings,
+        private SeatPlanner $seatPlanner,
     ) {}
 
     /**
@@ -79,7 +80,7 @@ class BookingService
     /**
      * Prices a booking without saving anything.
      *
-     * @param  array{date: string, start_time?: string|null, rate_unit: string, quantity: int, seats: int, addons?: list<array{id: int, quantity: int}>, use_pass?: bool}  $input
+     * @param  array{date: string, start_time?: string|null, rate_unit: string, quantity: int, seats: int, seat_ids?: list<int>|null, addons?: list<array{id: int, quantity: int}>, use_pass?: bool}  $input
      * @return array<string, mixed>
      */
     public function quote(Space $space, array $input, ?User $customer, ?int $ignoreBookingId = null): array
@@ -96,6 +97,12 @@ class BookingService
         $seats = (int) $input['seats'];
         [$startsAt, $endsAt] = $this->availability->window($space, $input['date'], $input['rate_unit'], $quantity, $input['start_time'] ?? null);
         $this->availability->assertBookable($space, $startsAt, $endsAt, $input['rate_unit'], $seats, $ignoreBookingId);
+
+        // Chosen seats are optional: with none chosen, the booking gets the first free seats.
+        $seatIds = array_values(array_map('intval', $input['seat_ids'] ?? []));
+        if ($seatIds !== []) {
+            $this->seatPlanner->assertChoice($space, $startsAt, $endsAt, $seatIds, $seats, $ignoreBookingId);
+        }
 
         // Shared spaces (hot desks) are priced per person; a whole room is priced once.
         $people = $space->isShared() ? $seats : 1;
@@ -159,6 +166,7 @@ class BookingService
             'rate_unit' => $input['rate_unit'],
             'quantity' => $quantity,
             'seats' => $seats,
+            'seat_ids' => $seatIds,
             'lines' => $lines,
             'subtotal' => $subtotal,
             'addons' => $addons,
@@ -230,6 +238,7 @@ class BookingService
             foreach ($quote['addons'] as $addon) {
                 $booking->addons()->create($addon);
             }
+            $this->seatPlanner->assign($booking, $quote['space'], $quote['seat_ids']);
 
             if ($status === BookingStatus::Held) {
                 $this->raiseInvoice($booking, $quote['lines']);
@@ -255,9 +264,13 @@ class BookingService
     public function markPaid(Booking $booking): void
     {
         $booking->loadMissing(['invoice', 'user']);
-        $paidVia = $booking->invoice?->payments()->where('status', PaymentStatus::Success->value)->latest('id')->value('gateway') === Payment::BANK_TRANSFER
-            ? 'bank_transfer'
-            : 'online';
+        $gateway = $booking->invoice?->payments()->where('status', PaymentStatus::Success->value)->latest('id')->value('gateway');
+        $paidVia = match (true) {
+            $gateway === Payment::BANK_TRANSFER => 'bank_transfer',
+            // A discount code covered the whole invoice, so no money changed hands.
+            $gateway === null && $booking->invoice?->coupon_code !== null => 'coupon',
+            default => 'online',
+        };
 
         // What the customer actually paid, which is less than the booking total when a discount code was used.
         $paid = $booking->invoice ? max(0, $booking->invoice->amount_paid - $booking->invoice->amount_refunded) : $booking->total;
@@ -274,7 +287,8 @@ class BookingService
 
             if ($locked->status === BookingStatus::Expired) {
                 $space = Space::with(['type', 'location'])->findOrFail($locked->space_id);
-                if ($this->availability->hasRoom($space, CarbonImmutable::instance($locked->starts_at), CarbonImmutable::instance($locked->ends_at), $locked->seats, $locked->id)) {
+                if ($this->availability->hasRoom($space, CarbonImmutable::instance($locked->starts_at), CarbonImmutable::instance($locked->ends_at), $locked->seats, $locked->id)
+                    && $this->seatPlanner->reclaim($locked, $space)) {
                     $this->confirmLocked($locked, $paidVia);
 
                     return 'confirmed';

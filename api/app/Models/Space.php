@@ -117,4 +117,14 @@ class Space extends Model
     {
         $query->orderBy('sort_order')->orderBy('name');
     }
+
+    /**
+     * Named seats customers can pick (shared spaces only).
+     *
+     * @return HasMany<SpaceSeat, $this>
+     */
+    public function seats(): HasMany
+    {
+        return $this->hasMany(SpaceSeat::class);
+    }
 }

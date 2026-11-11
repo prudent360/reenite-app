@@ -64,7 +64,8 @@ class BookingNotification extends TemplatedNotification
                 ? $startsAt->format('l j F Y')
                 : $startsAt->format('j M Y').' to '.$endsAt->format('j M Y'),
             'booking_time' => $startsAt->format('g:ia').' to '.$endsAt->format('g:ia'),
-            'guests' => $booking->seats.' '.($booking->seats === 1 ? 'person' : 'people'),
+            // "1 person", or "1 person, Desk 4" when the booking has named seats.
+            'guests' => $booking->seats.' '.($booking->seats === 1 ? 'person' : 'people').(($seats = $booking->seatLabels()) !== '' ? ", {$seats}" : ''),
         ];
     }
 }

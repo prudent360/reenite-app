@@ -1,3 +1,4 @@
+import { MoveSeats } from "@/components/admin/bookings/move-seats";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
@@ -47,6 +48,9 @@ async function Detail({ reference }: { reference: string }) {
   const rows: [string, ReactNode][] = [
     ["When", formatWhen(booking)],
     ["People", booking.seats],
+    ...((booking.assigned_seats ?? []).length > 0
+      ? [[booking.seats === 1 ? "Seat" : "Seats", <MoveSeats key="seats" booking={booking} canMove={can(staff, "bookings.manage") && booking.can_cancel} />] as [string, ReactNode]]
+      : []),
     ["Length", booking.rate_unit === "hour" ? `${booking.quantity} hour(s)` : `${booking.quantity} ${booking.rate_unit}(s)`],
     ["Check-in code", booking.check_in_code ? <span className="font-mono font-semibold tracking-widest">{booking.check_in_code}</span> : "Issued once paid"],
     ["Checked in", booking.checked_in_at ? `${formatDateTime(booking.checked_in_at)}${booking.checked_in_by ? ` by ${booking.checked_in_by}` : ""}` : "Not yet"],

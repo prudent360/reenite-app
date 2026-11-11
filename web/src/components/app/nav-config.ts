@@ -1,6 +1,9 @@
 import {
   History,
   CalendarCheck,
+  CalendarClock,
+  CalendarRange,
+  MessageCircle,
   CalendarCog,
   ChartColumn,
   Armchair,
@@ -67,7 +70,8 @@ export const customerNav: NavSection[] = [
   {
     title: "My business",
     items: [
-      { href: "/dashboard/businesses", label: "My Businesses", icon: Building2, keywords: "company cac" },
+      { href: "/dashboard/businesses", label: "My Businesses", icon: Building2, keywords: "company cac compliance calendar deadlines health score vat paye annual returns" },
+      { href: "/dashboard/consultations", label: "Consultations", icon: CalendarClock, keywords: "advice officer meeting call tax legal book session" },
       { href: "/dashboard/services", label: "Services", icon: Store, tab: true, keywords: "register tax website order" },
       { href: "/dashboard/orders", label: "Orders", icon: ClipboardList, tab: true, keywords: "track filing progress" },
     ],
@@ -98,6 +102,7 @@ export const settingsLinks: NavLink[] = [
   { href: "/admin/settings/bank-transfer", label: "Bank transfer", icon: Landmark, permission: "settings.manage", keywords: "account number transfer" },
   { href: "/admin/settings/email", label: "Email delivery", icon: Mail, permission: "settings.manage", keywords: "smtp resend mailgun sender" },
   { href: "/admin/settings/email-templates", label: "Email templates", icon: MailOpen, permission: "settings.manage", keywords: "wording notifications messages" },
+  { href: "/admin/settings/whatsapp", label: "WhatsApp", icon: MessageCircle, permission: "settings.manage", keywords: "whatsapp cloud api meta templates notifications sms" },
   { href: "/admin/settings/booking", label: "Space booking", icon: CalendarCog, permission: "settings.manage", keywords: "book.reenite.com booking site pause switch online booking" },
   { href: "/admin/settings/signatory", label: "Signatory", icon: PenLine, permission: "settings.manage", keywords: "founder signature legal documents sign" },
 ];
@@ -125,6 +130,8 @@ export const adminNav: NavSection[] = [
       { href: "/admin/customers", label: "Customers", icon: Users, permission: "customers.view", keywords: "users suspend" },
       { href: "/admin/legal", label: "Legal documents", icon: FileSignature, permission: "documents.manage", keywords: "agreements contracts sign virtual office upload" },
       { href: "/admin/mail", label: "Mail", icon: Mailbox, permission: "mail.manage", keywords: "virtual office mailbox letters parcels scan forward collect" },
+      { href: "/admin/compliance", label: "Compliance", icon: CalendarRange, permission: "compliance.manage", keywords: "deadlines overdue vat paye annual returns tcc customers businesses" },
+      { href: "/admin/consultations", label: "Consultations", icon: CalendarClock, permission: "consultations.view_assigned", keywords: "advice sessions meetings officer video call" },
     ],
   },
   {
@@ -188,6 +195,7 @@ export const adminNav: NavSection[] = [
 /** Orders are visible to anyone who can see all orders or just their assigned ones. */
 const permissionAliases: Record<string, string[]> = {
   "orders.view_assigned": ["orders.view_assigned", "orders.view_all"],
+  "consultations.view_assigned": ["consultations.view_assigned", "consultations.manage"],
 };
 
 function permitted(link: NavLink, permissions: string[]): boolean {

@@ -1,5 +1,7 @@
 <?php
 
+use App\Compliance\ComplianceCalendar;
+use App\Consultations\ConsultationService;
 use App\Models\ActivityLog;
 use App\Workspace\BookingService;
 use App\Workspace\PlanService;
@@ -27,10 +29,32 @@ Artisan::command('plans:expire', function (PlanService $plans) {
     $this->info($plans->expireEnded().' passes and memberships ended.');
 })->purpose('End passes and memberships whose period is over');
 
+Artisan::command('compliance:refresh', function (ComplianceCalendar $calendar) {
+    $this->info($calendar->refreshAll().' business calendars refreshed.');
+})->purpose('Roll compliance deadlines forward (monthly VAT and PAYE, yearly returns)');
+
+Artisan::command('compliance:remind', function (ComplianceCalendar $calendar) {
+    $this->info($calendar->sendReminders().' deadline reminders sent.');
+})->purpose('Email customers about deadlines coming up or missed');
+
+Artisan::command('consultations:expire-holds', function (ConsultationService $consultations) {
+    $this->info($consultations->expireHolds().' unpaid consultation holds released.');
+})->purpose('Release consultation times whose payment window has passed');
+
+Artisan::command('consultations:remind', function (ConsultationService $consultations) {
+    $this->info($consultations->sendReminders().' consultation reminders sent.');
+})->purpose('Email customers the day before their consultation');
+
 Schedule::command('bookings:expire-holds')->everyMinute()->withoutOverlapping()->onOneServer();
 Schedule::command('bookings:complete')->everyFifteenMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command('bookings:remind')->hourly()->withoutOverlapping()->onOneServer();
+Schedule::command('consultations:expire-holds')->everyMinute()->withoutOverlapping()->onOneServer();
+Schedule::command('consultations:remind')->hourly()->withoutOverlapping()->onOneServer();
 Schedule::command('plans:expire')->hourly()->withoutOverlapping()->onOneServer();
+
+// Compliance: roll the calendar forward overnight, then remind at 8am Lagos time.
+Schedule::command('compliance:refresh')->dailyAt('05:00')->timezone('Africa/Lagos')->withoutOverlapping()->onOneServer();
+Schedule::command('compliance:remind')->dailyAt('08:00')->timezone('Africa/Lagos')->withoutOverlapping()->onOneServer();
 
 // Daily backups at 2am Lagos time: the database every night, uploaded files too on Sundays.
 Schedule::command('app:backup')->dailyAt('02:00')->timezone('Africa/Lagos')->withoutOverlapping()->onOneServer();

@@ -18,14 +18,19 @@ class ProfileController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:120'],
-            'phone' => ['nullable', 'string', 'max:20', 'regex:/^\+?[0-9\s-]{7,20}$/', Rule::unique('users', 'phone')->ignore($user->id)],
-        ]);
+            'phone' => ['nullable', 'string', 'max:20', 'regex:/^\+?[0-9\s-]{7,20}$/', Rule::unique('users', 'phone')->ignore($user->id), 'required_if_accepted:whatsapp_updates'],
+            'whatsapp_updates' => ['sometimes', 'boolean'],
+        ], ['phone.required_if_accepted' => 'Add your phone number to get updates on WhatsApp.']);
 
         if (($validated['phone'] ?? null) !== $user->phone) {
             $user->phone_verified_at = null;
         }
+        if (array_key_exists('whatsapp_updates', $validated)) {
+            // Keep the original date of agreement while they stay opted in.
+            $user->whatsapp_opt_in_at = $validated['whatsapp_updates'] ? ($user->whatsapp_opt_in_at ?? now()) : null;
+        }
 
-        $user->fill($validated)->save();
+        $user->fill(collect($validated)->except('whatsapp_updates')->all())->save();
 
         return new UserResource($user);
     }

@@ -35,6 +35,11 @@ class BookingResource extends JsonResource
             'rate_unit' => $this->rate_unit,
             'quantity' => $this->quantity,
             'seats' => $this->seats,
+            'assigned_seats' => $this->whenLoaded('assignedSeats', fn () => $this->assignedSeats->map(fn ($seat) => [
+                'id' => $seat->id,
+                'label' => $seat->label,
+                'zone' => $seat->zone,
+            ])->values()),
             'subtotal' => $this->subtotal,
             'addons_total' => $this->addons_total,
             'discount' => $this->discount,

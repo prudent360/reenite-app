@@ -13,6 +13,6 @@ class ProductionSeeder extends Seeder
 {
     public function run(): void
     {
-        $this->call([RolesAndPermissionsSeeder::class, SettingsSeeder::class, ServiceCatalogueSeeder::class, WorkspaceSeeder::class]);
+        $this->call([RolesAndPermissionsSeeder::class, SettingsSeeder::class, ServiceCatalogueSeeder::class, WorkspaceSeeder::class, ConsultationTypeSeeder::class]);
     }
 }

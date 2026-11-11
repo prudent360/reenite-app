@@ -16,7 +16,7 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->call([RolesAndPermissionsSeeder::class, ServiceCatalogueSeeder::class, SettingsSeeder::class, WorkspaceSeeder::class]);
+        $this->call([RolesAndPermissionsSeeder::class, ServiceCatalogueSeeder::class, SettingsSeeder::class, WorkspaceSeeder::class, ConsultationTypeSeeder::class]);
 
         $staff = [
             ['Ada Super Admin', 'admin@reenite.test', Role::SuperAdmin],

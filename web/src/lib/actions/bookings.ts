@@ -3,7 +3,7 @@
 import { refresh, updateTag } from "next/cache";
 import { api, apiUpload, toFormState } from "@/lib/api";
 import { BOOKING_SETTINGS_TAG } from "@/lib/booking";
-import type { Booking, BookingQuote, BookingSettings, DayAvailability, FormState, Payment, Space } from "@/lib/types";
+import type { Booking, BookingQuote, BookingSettings, DayAvailability, FormState, Payment, SeatMap, Space } from "@/lib/types";
 
 export type BookingInput = {
   space: string;
@@ -12,6 +12,8 @@ export type BookingInput = {
   rate_unit: string;
   quantity: number;
   seats: number;
+  /** Chosen seats on a hot desk with named seats; empty means "any free seat". */
+  seat_ids?: number[];
   addons: { id: number; quantity: number }[];
   use_pass: boolean;
 };
@@ -33,6 +35,17 @@ export async function getSpace(slug: string): Promise<Result<Space>> {
 export async function getAvailability(space: string, date: string, seats: number): Promise<Result<DayAvailability>> {
   try {
     const { data } = await api<{ data: DayAvailability }>(`/workspace/spaces/${encodeURIComponent(space)}/availability?${new URLSearchParams({ date, seats: String(seats) })}`);
+    return { ok: true, data };
+  } catch (error) {
+    return toFormState(error);
+  }
+}
+
+/** Which seats are free for the chosen time (hot desks with named seats). */
+export async function getSeatMap(space: string, window: { date: string; start_time: string | null; rate_unit: string; quantity: number }): Promise<Result<SeatMap>> {
+  try {
+    const query = new URLSearchParams({ date: window.date, rate_unit: window.rate_unit, quantity: String(window.quantity), ...(window.start_time ? { start_time: window.start_time } : {}) });
+    const { data } = await api<{ data: SeatMap }>(`/workspace/spaces/${encodeURIComponent(space)}/seats?${query}`);
     return { ok: true, data };
   } catch (error) {
     return toFormState(error);
@@ -149,6 +162,26 @@ export async function approveBooking(reference: string): Promise<FormState> {
 
 export async function declineBooking(reference: string, reason: string): Promise<FormState> {
   return adminCall(`/admin/bookings/${reference}/decline`, { reason }, "Booking request declined.");
+}
+
+/** The space's seats for a booking's time, with which ones it holds now (staff moving a booking). */
+export async function getBookingSeats(reference: string): Promise<Result<SeatMap>> {
+  try {
+    const { data } = await api<{ data: SeatMap }>(`/admin/bookings/${encodeURIComponent(reference)}/seats`);
+    return { ok: true, data };
+  } catch (error) {
+    return toFormState(error);
+  }
+}
+
+export async function moveBookingSeats(reference: string, seatIds: number[]): Promise<FormState> {
+  try {
+    await api(`/admin/bookings/${encodeURIComponent(reference)}/seats`, { method: "PUT", body: { seat_ids: seatIds } });
+    refresh();
+    return { ok: true, message: "Seat changed." };
+  } catch (error) {
+    return toFormState(error);
+  }
 }
 
 export async function cancelBookingAsStaff(reference: string, reason: string, refundPercent: number): Promise<FormState> {

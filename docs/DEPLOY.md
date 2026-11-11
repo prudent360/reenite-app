@@ -113,10 +113,12 @@ Use your own home folder (run `pwd` over SSH to see it). This one job runs every
 
 | What | When |
 |---|---|
-| Release unpaid booking holds | every minute |
+| Release unpaid booking and consultation holds | every minute |
 | Send queued emails and jobs (`QUEUE_FROM_SCHEDULER=true`) | every minute |
 | Mark finished bookings complete | every 15 minutes |
-| Booking reminders, ending passes and memberships | hourly |
+| Booking and consultation reminders, ending passes and memberships | hourly |
+| Roll the compliance calendar forward (monthly VAT and PAYE, yearly returns) | daily, 5am Lagos time |
+| Compliance deadline reminders (14 days, 3 days, and once when missed) | daily, 8am Lagos time |
 | Database backup | daily, 2am Lagos time |
 | Database **and uploaded files** backup | Sundays, 2:30am |
 | Delete activity log entries older than a year | daily |
@@ -195,7 +197,13 @@ php artisan config:cache && php artisan route:cache
 php artisan queue:restart
 ```
 
-`migrate` also gives staff roles any new permissions (for example `coupons.manage` and `mail.manage`), so there's no seeder to run after an update.
+`migrate` also gives staff roles any new permissions (for example `coupons.manage`, `mail.manage`, `compliance.manage` and `consultations.manage`), so there's no permissions seeder to run after an update.
+
+**Once, after the update that added consultations:** add the three starter consultations (placeholder prices you can change under Admin > Consultations > Set up):
+
+```bash
+php artisan db:seed --class=ConsultationTypeSeeder --force
+```
 
 ---
 
@@ -217,6 +225,19 @@ php artisan queue:restart
 - The website passes each visitor's real IP address to the API, signed with `INTERNAL_API_KEY`. That is why both sides need the same secret.
 - Payment keys are stored encrypted. Uploaded documents are private and stream through the website only to people allowed to see them.
 - `APP_DEBUG=false` in production, so error pages never show code or settings.
+
+---
+
+## WhatsApp messages (optional)
+
+Customers who switch on "Send me updates on WhatsApp" in their settings get booking, order, mail, deadline and consultation updates on WhatsApp as well as by email. It uses Meta's WhatsApp Cloud API:
+
+1. In Meta Business Manager, add a WhatsApp Business account and a phone number (it can't already be used in the WhatsApp app).
+2. Create a System User with a **permanent** access token that has `whatsapp_business_messaging` permission.
+3. In WhatsApp Manager, create a message template for each event you want. Admin > Settings > WhatsApp lists the values each one receives as `{{1}}`, `{{2}}`..., in order. Wait for Meta to approve them.
+4. In Admin > Settings > WhatsApp, enter the phone number ID, the token and each approved template name, switch it on, and send a test.
+
+If WhatsApp is off, a template is missing, or Meta refuses a message, the email still goes out and the failure is written to the log.
 
 ---
 

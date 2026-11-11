@@ -30,6 +30,7 @@ class UserResource extends JsonResource
             'name' => $this->name,
             'email' => $this->email,
             'phone' => $this->phone,
+            'whatsapp_updates' => $this->whatsapp_opt_in_at !== null,
             'type' => $this->type,
             'status' => $this->status,
             'avatar_url' => $this->avatar_path ? Storage::url($this->avatar_path) : null,

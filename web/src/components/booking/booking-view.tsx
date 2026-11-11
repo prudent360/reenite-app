@@ -66,6 +66,9 @@ export async function BookingView({ reference, token, paid, inDashboard = false 
               </Detail>
               <Detail icon={Users} label="People">
                 {booking.seats} {booking.seats === 1 ? "person" : "people"}
+                {(booking.assigned_seats ?? []).length > 0 && (
+                  <span className="font-semibold"> · {(booking.assigned_seats ?? []).map((seat) => seat.label).join(", ")}</span>
+                )}
               </Detail>
               <Detail icon={MapPin} label="Where">
                 {booking.location_name}

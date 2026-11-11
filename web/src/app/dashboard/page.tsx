@@ -28,7 +28,8 @@ import { Skeleton } from "@/components/ui/loader";
 import { api } from "@/lib/api";
 import { requireCustomer } from "@/lib/session";
 import { formatWhen } from "@/lib/booking-format";
-import type { Agreement, Booking, Invoice, Order, Paginated, User, VaultFile } from "@/lib/types";
+import { HealthBadge, HealthIssues, HealthRing } from "@/components/businesses/health";
+import type { Agreement, Booking, Business, Invoice, Order, Paginated, User, VaultFile } from "@/lib/types";
 import { cn, firstName, formatNaira } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Dashboard" };
@@ -53,12 +54,12 @@ function greeting(): string {
   return hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 }
 
-function setupSteps(user: User, hasOrdered: boolean) {
+function setupSteps(user: User, hasOrdered: boolean, hasBusiness: boolean) {
   return [
     { label: "Create your account", done: true },
     { label: "Verify your email", done: user.email_verified },
     { label: "Add your phone number", done: Boolean(user.phone), href: "/dashboard/settings" },
-    { label: "Add your business", done: false, href: "/dashboard/businesses" },
+    { label: "Add your business", done: hasBusiness, href: "/dashboard/businesses/new" },
     { label: "Order your first service", done: hasOrdered, href: "/dashboard/services" },
   ];
 }
@@ -71,12 +72,13 @@ const viewLink = (href: string, label: string) => (
 
 async function Overview({ searchParams }: { searchParams: PageProps<"/dashboard">["searchParams"] }) {
   const [user, params] = await Promise.all([requireCustomer(), searchParams]);
-  const [{ data: invoices }, { data: orders }, { data: documents }, { data: bookings }, { data: agreements }] = await Promise.all([
+  const [{ data: invoices }, { data: orders }, { data: documents }, { data: bookings }, { data: agreements }, { data: businesses }] = await Promise.all([
     api<Paginated<Invoice>>("/billing/invoices"),
     api<Paginated<Order>>("/orders"),
     api<{ data: VaultFile[] }>("/documents"),
     api<Paginated<Booking>>("/my-bookings"),
     api<{ data: Agreement[] }>("/agreements"),
+    api<{ data: Business[] }>("/businesses"),
   ]);
   const toSign = agreements.filter((agreement) => !agreement.signed_at && agreement.is_open);
   // My bookings come back upcoming first, soonest first.
@@ -85,7 +87,9 @@ async function Overview({ searchParams }: { searchParams: PageProps<"/dashboard"
   const activeOrders = orders.filter((order) => order.status !== "completed" && order.status !== "cancelled");
   const unpaid = invoices.filter((invoice) => invoice.status === "unpaid" && !invoice.has_pending_transfer);
   const unpaidTotal = unpaid.reduce((sum, invoice) => sum + invoice.balance, 0);
-  const steps = setupSteps(user, orders.some((order) => order.status !== "cancelled"));
+  const steps = setupSteps(user, orders.some((order) => order.status !== "cancelled"), businesses.length > 0);
+  // The business that most needs attention leads the health panel.
+  const health = [...businesses].filter((business) => business.health).sort((a, b) => a.health!.score - b.health!.score);
   const percent = Math.round((steps.filter((step) => step.done).length / steps.length) * 100);
 
   return (
@@ -177,8 +181,33 @@ async function Overview({ searchParams }: { searchParams: PageProps<"/dashboard"
         <StatTile icon={ClipboardList} tone="navy" value={activeOrders.length} label="Active orders" hint="Services in progress" />
         <StatTile icon={CalendarDays} tone="info" value={upcoming.length} label="Upcoming bookings" hint="At Reenite Uyo" />
         <StatTile icon={FolderLock} tone="brand" value={documents.length} label="Documents" hint="In your secure vault" />
-        <StatTile icon={Building2} tone="solid" value="0" label="Businesses" hint="Registered or in progress" />
+        <StatTile icon={Building2} tone="solid" value={businesses.length} label="Businesses" hint="On your compliance calendar" />
       </div>
+
+      {health.length > 0 && (
+        <Panel icon={Building2} title="Business health" action={viewLink("/dashboard/businesses", "All businesses")}>
+          <ul className="divide-y divide-border">
+            {health.slice(0, 3).map((business) => (
+              <li key={business.id}>
+                <Link href={`/dashboard/businesses/${business.id}`} className="flex flex-col gap-4 px-5 py-4 hover:bg-surface-muted/50 sm:flex-row sm:items-center sm:px-7">
+                  <span className="flex items-center gap-4 sm:w-72">
+                    <HealthRing health={business.health!} size="sm" />
+                    <span className="min-w-0">
+                      <span className="block truncate font-semibold text-foreground">{business.name}</span>
+                      <span className="mt-1 block">
+                        <HealthBadge health={business.health!} />
+                      </span>
+                    </span>
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <HealthIssues health={business.health!} limit={2} />
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      )}
 
       <div className="grid gap-6 xl:grid-cols-5">
         <Panel icon={ListChecks} title="Get set up" className="xl:col-span-2">
@@ -274,13 +303,33 @@ async function Overview({ searchParams }: { searchParams: PageProps<"/dashboard"
             </ul>
           )}
         </Panel>
-        <Panel icon={CalendarDays} title="Upcoming bookings" action={viewLink("/dashboard/workspace", "Book")}>
-          <EmptyState
-            icon={CalendarDays}
-            title="Nothing booked yet"
-            description="Book a hot desk, private office, podcast studio or event space at Reenite Uyo."
-            action={<ButtonLink href="/dashboard/workspace" variant="outline" size="sm">Book a space</ButtonLink>}
-          />
+        <Panel icon={CalendarDays} title="Upcoming bookings" action={viewLink(upcoming.length > 0 ? "/dashboard/workspace" : "/dashboard/workspace/book", upcoming.length > 0 ? "View all" : "Book")}>
+          {upcoming.length === 0 ? (
+            <EmptyState
+              icon={CalendarDays}
+              title="Nothing booked yet"
+              description="Book a hot desk, private office, podcast studio or event space at Reenite Uyo."
+              action={<ButtonLink href="/dashboard/workspace/book" variant="outline" size="sm">Book a space</ButtonLink>}
+            />
+          ) : (
+            <ul className="mt-3 divide-y divide-border pb-2">
+              {upcoming.slice(0, 4).map((booking) => (
+                <li key={booking.reference}>
+                  <Link href={`/dashboard/workspace/${booking.reference}`} className="flex items-center justify-between gap-3 px-5 py-4 hover:bg-surface-muted/50 sm:px-7">
+                    <span className="min-w-0">
+                      <span className="block truncate font-semibold text-foreground">{booking.space_name}</span>
+                      <span className="block text-sm text-muted">{formatWhen(booking)}</span>
+                    </span>
+                    {booking.check_in_code ? (
+                      <span className="shrink-0 font-mono text-sm font-bold tracking-widest text-foreground">{booking.check_in_code}</span>
+                    ) : (
+                      <span className="shrink-0 text-sm font-semibold text-warning">{booking.status === "pending_approval" ? "Checking payment" : "Awaiting payment"}</span>
+                    )}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
         </Panel>
       </div>
     </div>

@@ -3,6 +3,9 @@
 use App\Http\Controllers\Api\V1\Admin\ActivityLogController;
 use App\Http\Controllers\Api\V1\Admin\BookingController as AdminBookingController;
 use App\Http\Controllers\Api\V1\Admin\BundleController;
+use App\Http\Controllers\Api\V1\Admin\ComplianceController as AdminComplianceController;
+use App\Http\Controllers\Api\V1\Admin\ConsultationController as AdminConsultationController;
+use App\Http\Controllers\Api\V1\Admin\ConsultationTypeController;
 use App\Http\Controllers\Api\V1\Admin\DashboardController;
 use App\Http\Controllers\Api\V1\Admin\Finance\CouponController;
 use App\Http\Controllers\Api\V1\Admin\Finance\InvoiceController as AdminInvoiceController;
@@ -19,6 +22,7 @@ use App\Http\Controllers\Api\V1\Admin\Settings\EmailTemplateController;
 use App\Http\Controllers\Api\V1\Admin\Settings\MailSettingsController;
 use App\Http\Controllers\Api\V1\Admin\Settings\PaymentSettingsController;
 use App\Http\Controllers\Api\V1\Admin\Settings\SignatoryController;
+use App\Http\Controllers\Api\V1\Admin\Settings\WhatsAppSettingsController;
 use App\Http\Controllers\Api\V1\Admin\Settings\WorkspaceSettingsController;
 use App\Http\Controllers\Api\V1\Admin\StaffController;
 use App\Http\Controllers\Api\V1\Admin\UserController;
@@ -30,6 +34,7 @@ use App\Http\Controllers\Api\V1\Admin\Workspace\MailboxController as AdminMailbo
 use App\Http\Controllers\Api\V1\Admin\Workspace\MembershipPlanController;
 use App\Http\Controllers\Api\V1\Admin\Workspace\PassPlanController;
 use App\Http\Controllers\Api\V1\Admin\Workspace\SpaceController;
+use App\Http\Controllers\Api\V1\Admin\Workspace\SpaceSeatController;
 use App\Http\Controllers\Api\V1\Admin\Workspace\SpaceTypeController;
 use App\Http\Controllers\Api\V1\AgreementController;
 use App\Http\Controllers\Api\V1\Auth\AuthController;
@@ -37,7 +42,10 @@ use App\Http\Controllers\Api\V1\Auth\EmailVerificationController;
 use App\Http\Controllers\Api\V1\Auth\PasswordResetController;
 use App\Http\Controllers\Api\V1\Billing\BillingController;
 use App\Http\Controllers\Api\V1\BookingController;
+use App\Http\Controllers\Api\V1\BusinessController;
 use App\Http\Controllers\Api\V1\CatalogueController;
+use App\Http\Controllers\Api\V1\ComplianceController;
+use App\Http\Controllers\Api\V1\ConsultationController;
 use App\Http\Controllers\Api\V1\MailboxController;
 use App\Http\Controllers\Api\V1\MetaController;
 use App\Http\Controllers\Api\V1\OrderController;
@@ -55,6 +63,7 @@ Route::prefix('v1')->name('v1.')->group(function () {
     Route::get('workspace/spaces/{slug}', [WorkspaceController::class, 'space'])->name('workspace.spaces.show');
     Route::get('workspace/booking-settings', [WorkspaceController::class, 'bookingSettings'])->name('workspace.booking-settings');
     Route::get('workspace/spaces/{slug}/availability', [WorkspaceController::class, 'availability'])->middleware('throttle:60,1')->name('workspace.spaces.availability');
+    Route::get('workspace/spaces/{slug}/seats', [WorkspaceController::class, 'seats'])->middleware('throttle:60,1')->name('workspace.spaces.seats');
 
     // Booking works for guests too: a guest proves it's their booking with its private token.
     Route::prefix('bookings')->name('bookings.')->group(function () {
@@ -70,6 +79,9 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::post('{booking}/bank-transfer', [BookingController::class, 'bankTransfer'])->middleware('throttle:5,1')->name('bank-transfer');
         Route::post('{booking}/payments/{payment:reference}/verify', [BookingController::class, 'verifyPayment'])->middleware('throttle:20,1')->withoutScopedBindings()->name('payments.verify');
     });
+
+    Route::get('consultations/types', [ConsultationController::class, 'types'])->name('consultations.types');
+    Route::get('consultations/types/{type}/slots', [ConsultationController::class, 'slots'])->middleware('throttle:60,1')->name('consultations.slots');
 
     // The website asks for a link so the browser can send a file straight here (not via Vercel).
     Route::post('upload-grants', [UploadGrantController::class, 'store'])->middleware('throttle:30,1')->name('upload-grants.store');
@@ -128,6 +140,21 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::post('items/{item}/request', [MailboxController::class, 'request'])->middleware('throttle:20,1')->name('items.request');
             Route::delete('items/{item}/request', [MailboxController::class, 'cancelRequest'])->name('items.request.destroy');
         });
+        Route::prefix('consultations')->name('consultations.')->group(function () {
+            Route::get('/', [ConsultationController::class, 'index'])->name('index');
+            Route::post('/', [ConsultationController::class, 'store'])->middleware('throttle:10,1')->name('store');
+            Route::get('{consultation}', [ConsultationController::class, 'show'])->name('show');
+            Route::post('{consultation}/cancel', [ConsultationController::class, 'cancel'])->middleware('throttle:10,1')->name('cancel');
+        });
+
+        Route::apiResource('businesses', BusinessController::class);
+        Route::prefix('compliance')->name('compliance.')->group(function () {
+            Route::get('/', [ComplianceController::class, 'index'])->name('index');
+            Route::post('businesses/{business}/items', [ComplianceController::class, 'store'])->middleware('throttle:30,1')->name('items.store');
+            Route::patch('items/{item}', [ComplianceController::class, 'update'])->name('items.update');
+            Route::delete('items/{item}', [ComplianceController::class, 'destroy'])->name('items.destroy');
+        });
+
         Route::post('plans/passes', [PlanController::class, 'buyPass'])->middleware('throttle:10,1')->name('plans.passes.store');
         Route::post('plans/memberships', [PlanController::class, 'buyMembership'])->middleware('throttle:10,1')->name('plans.memberships.store');
 
@@ -177,6 +204,7 @@ Route::prefix('v1')->name('v1.')->group(function () {
                 Route::apiResource('spaces', SpaceController::class);
                 Route::post('spaces/{space}/photo', [SpaceController::class, 'photo'])->name('spaces.photo');
                 Route::delete('spaces/{space}/photo', [SpaceController::class, 'removePhoto'])->name('spaces.photo.destroy');
+                Route::apiResource('spaces.seats', SpaceSeatController::class)->except('show')->scoped();
                 Route::apiResource('addons', AddonController::class)->except('show');
                 Route::apiResource('closures', BlackoutDateController::class)->except('show')->parameters(['closures' => 'closure']);
                 Route::apiResource('cancellation-policies', CancellationPolicyController::class)->except('show');
@@ -208,6 +236,8 @@ Route::prefix('v1')->name('v1.')->group(function () {
                     Route::post('{booking}/cancel', [AdminBookingController::class, 'cancel'])->name('cancel');
                     Route::post('{booking}/approve', [AdminBookingController::class, 'approve'])->name('approve');
                     Route::post('{booking}/decline', [AdminBookingController::class, 'decline'])->name('decline');
+                    Route::get('{booking}/seats', [AdminBookingController::class, 'seats'])->name('seats');
+                    Route::put('{booking}/seats', [AdminBookingController::class, 'moveSeats'])->name('seats.update');
                 });
             });
 
@@ -226,6 +256,24 @@ Route::prefix('v1')->name('v1.')->group(function () {
                 Route::get('{order}/files/{file}', [AdminOrderController::class, 'download'])->name('files.show');
                 Route::post('{order}/files/{file}/review', [AdminOrderController::class, 'reviewFile'])->name('files.review');
                 Route::post('{order}/messages', [AdminOrderController::class, 'message'])->name('messages.store');
+            });
+
+            Route::prefix('consultations')->name('consultations.')->group(function () {
+                Route::middleware('permission:consultations.manage')->group(function () {
+                    Route::apiResource('types', ConsultationTypeController::class)->except('show')->parameters(['types' => 'consultationType']);
+                    Route::post('{consultation}/cancel', [AdminConsultationController::class, 'cancel'])->name('cancel');
+                });
+                Route::middleware('permission:consultations.manage|consultations.view_assigned')->group(function () {
+                    Route::get('/', [AdminConsultationController::class, 'index'])->name('index');
+                    Route::get('{consultation}', [AdminConsultationController::class, 'show'])->name('show');
+                    Route::patch('{consultation}', [AdminConsultationController::class, 'update'])->name('update');
+                    Route::post('{consultation}/outcome', [AdminConsultationController::class, 'outcome'])->name('outcome');
+                });
+            });
+
+            Route::prefix('compliance')->name('compliance.')->middleware('permission:compliance.manage')->group(function () {
+                Route::get('/', [AdminComplianceController::class, 'index'])->name('index');
+                Route::patch('items/{item}', [AdminComplianceController::class, 'update'])->name('items.update');
             });
 
             Route::prefix('mail')->name('mail.')->middleware('permission:mail.manage')->group(function () {
@@ -284,6 +332,10 @@ Route::prefix('v1')->name('v1.')->group(function () {
                 Route::get('mail', [MailSettingsController::class, 'show'])->name('mail.show');
                 Route::put('mail', [MailSettingsController::class, 'update'])->name('mail.update');
                 Route::post('mail/test', [MailSettingsController::class, 'test'])->middleware('throttle:5,1')->name('mail.test');
+
+                Route::get('whatsapp', [WhatsAppSettingsController::class, 'show'])->name('whatsapp.show');
+                Route::put('whatsapp', [WhatsAppSettingsController::class, 'update'])->name('whatsapp.update');
+                Route::post('whatsapp/test', [WhatsAppSettingsController::class, 'test'])->middleware('throttle:5,1')->name('whatsapp.test');
 
                 Route::get('email-templates', [EmailTemplateController::class, 'index'])->name('email-templates.index');
                 Route::put('email-templates/{key}', [EmailTemplateController::class, 'update'])->name('email-templates.update');

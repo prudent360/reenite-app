@@ -6,6 +6,7 @@ use App\Enums\InvoiceStatus;
 use App\Enums\PaymentStatus;
 use App\Events\InvoicePaid;
 use App\Models\Booking;
+use App\Models\Consultation;
 use App\Models\Coupon;
 use App\Models\CouponRedemption;
 use App\Models\CustomerMembership;
@@ -102,7 +103,7 @@ class CouponService
     public static function purchaseKind(Invoice $invoice): ?string
     {
         return match ($invoice->source_type) {
-            Order::class => 'services',
+            Order::class, Consultation::class => 'services',
             Booking::class => 'bookings',
             CustomerPass::class, CustomerMembership::class => 'plans',
             default => null,
