@@ -94,9 +94,12 @@ class BillingController extends Controller
     public function pay(Request $request, Invoice $invoice): JsonResponse
     {
         $this->authorizeOwner($request, $invoice->user_id);
-        $validated = $request->validate(['gateway' => ['required', 'string', Rule::in(['paystack', 'flutterwave', 'stripe'])]]);
+        $validated = $request->validate([
+            'gateway' => ['required', 'string', Rule::in(['paystack', 'flutterwave', 'stripe'])],
+            'save_card' => ['sometimes', 'boolean'],
+        ]);
 
-        $result = $this->payments->startOnlinePayment($invoice, $validated['gateway'], $request->user());
+        $result = $this->payments->startOnlinePayment($invoice, $validated['gateway'], $request->user(), saveCard: (bool) ($validated['save_card'] ?? false));
 
         return response()->json([
             'reference' => $result['payment']->reference,

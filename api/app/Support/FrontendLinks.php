@@ -61,6 +61,14 @@ class FrontendLinks
         return self::base().'/bookings/'.$booking->reference.'/return/'.$paymentReference.'?'.http_build_query(['token' => $booking->manage_token]);
     }
 
+    /**
+     * Booking page for one space, optionally opened on a date.
+     */
+    public static function bookSpace(string $slug, ?string $date = null): string
+    {
+        return self::base().'/book/'.$slug.($date ? '?'.http_build_query(['date' => $date]) : '');
+    }
+
     public static function adminBooking(string $reference): string
     {
         return self::base().'/admin/bookings/'.$reference;

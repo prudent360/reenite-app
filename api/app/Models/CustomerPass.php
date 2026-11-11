@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\RenewsAutomatically;
 use Database\Factories\CustomerPassFactory;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -21,7 +22,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class CustomerPass extends Model
 {
     /** @use HasFactory<CustomerPassFactory> */
-    use HasFactory;
+    use HasFactory, RenewsAutomatically;
 
     public const PENDING = 'pending';
 
@@ -92,5 +93,10 @@ class CustomerPass extends Model
     public function bookings(): HasMany
     {
         return $this->hasMany(Booking::class);
+    }
+
+    public function renewalPeriod(): string
+    {
+        return $this->period;
     }
 }

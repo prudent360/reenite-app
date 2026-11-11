@@ -2,6 +2,8 @@
 
 namespace App\Http\Resources;
 
+use App\Models\CustomerMembership;
+use App\Models\CustomerPass;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use Illuminate\Http\Request;
@@ -34,6 +36,8 @@ class InvoiceResource extends JsonResource
             'amount_refunded' => $this->amount_refunded,
             'balance' => $this->balance(),
             'is_payable' => $this->isPayable(),
+            // A pass or membership, which can renew automatically on a saved card.
+            'for_plan' => in_array($this->source_type, [CustomerPass::class, CustomerMembership::class], true),
             'has_pending_transfer' => $this->whenLoaded('payments', fn () => $this->payments->contains(
                 fn ($payment) => $payment->isBankTransfer() && $payment->status->value === 'awaiting_review',
             )),

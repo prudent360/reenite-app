@@ -9,10 +9,11 @@ import { Skeleton } from "@/components/ui/loader";
 import { ApiError, api } from "@/lib/api";
 import { getBookingSettings, getWorkspaceCatalogue } from "@/lib/booking";
 import { requireCustomer } from "@/lib/session";
+import type { BookingPreset } from "@/lib/booking-format";
 import type { Space } from "@/lib/types";
 
 /** Booking steps inside the dashboard, shared by /dashboard/workspace/book and /dashboard/workspace/book/[slug]. */
-export function DashboardBooking({ slug }: { slug: Promise<string> | null }) {
+export function DashboardBooking({ slug, preset }: { slug: Promise<string> | null; preset?: Promise<BookingPreset> }) {
   return (
     <>
       <Link href="/dashboard/workspace" className="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-muted hover:text-foreground">
@@ -20,13 +21,13 @@ export function DashboardBooking({ slug }: { slug: Promise<string> | null }) {
       </Link>
       <PageHeader title="Book a space" description="Three quick steps, then pay online and you're confirmed." />
       <Suspense fallback={<Skeleton className="h-[520px] rounded-2xl" />}>
-        <Wizard slug={slug} />
+        <Wizard slug={slug} preset={preset} />
       </Suspense>
     </>
   );
 }
 
-async function Wizard({ slug }: { slug: Promise<string> | null }) {
+async function Wizard({ slug, preset }: { slug: Promise<string> | null; preset?: Promise<BookingPreset> }) {
   const [user, settings] = await Promise.all([requireCustomer(), getBookingSettings()]);
   if (settings.destination === "external") {
     // Booking on this site is paused; the booking site takes over.
@@ -48,5 +49,5 @@ async function Wizard({ slug }: { slug: Promise<string> | null }) {
   if (locations.length === 0) {
     return <EmptyState icon={CloudOff} title="Spaces are unavailable right now" description="Please refresh in a moment, or message us to book." className="py-20" />;
   }
-  return <BookWizard locations={locations} user={user} initialSpace={initialSpace} inDashboard />;
+  return <BookWizard locations={locations} user={user} initialSpace={initialSpace} preset={initialSpace && preset ? await preset : undefined} inDashboard />;
 }

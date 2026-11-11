@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { CalendarDays, Clock, MapPin, ScanLine, Users } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { PrintButton } from "@/components/billing/print-button";
+import { BookingCountdownChip } from "@/components/booking/booking-tracker";
 import { ButtonLink } from "@/components/ui/button";
 import { ApiError, api } from "@/lib/api";
 import { BOOKING_TIMEZONE, formatBookingTime } from "@/lib/booking-format";
@@ -89,6 +90,7 @@ export async function BookingPass({ reference, token, backHref }: { reference: s
         </div>
 
         <div className="px-6 pb-6 pt-3 text-center">
+          <BookingCountdownChip booking={booking} className="mb-3 print:hidden" />
           <p className="flex items-center justify-center gap-1.5 text-sm font-semibold text-[#5c6488]">
             <ScanLine className="size-4 text-[#f05a28]" /> Show this at the front desk
           </p>

@@ -10,6 +10,8 @@ final readonly class VerifiedPayment
 {
     /**
      * @param  array<string, mixed>  $data  minimal details worth keeping (ids, channel, paid time), never card data
+     * @param  array{authorization_code: string, signature: string|null, email: string, brand: string|null, last4: string, exp_month: string|null, exp_year: string|null, bank: string|null}|null  $reusableCard
+     *                                                                                                                                                                                                            a card the gateway lets us charge again; only saved if the customer agreed
      */
     public function __construct(
         public string $status,
@@ -19,5 +21,6 @@ final readonly class VerifiedPayment
         public ?string $gatewayReference = null,
         public array $data = [],
         public ?string $message = null,
+        public ?array $reusableCard = null,
     ) {}
 }

@@ -5,13 +5,14 @@ import { BookWizard } from "@/components/booking/book-wizard";
 import { Skeleton } from "@/components/ui/loader";
 import { ApiError, api } from "@/lib/api";
 import { getBookingSettings, getWorkspaceCatalogue } from "@/lib/booking";
+import { bookingPreset, type BookingPreset } from "@/lib/booking-format";
 import { getOptionalUser } from "@/lib/session";
 import type { Space } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Book a space" };
 
 /** A link to one space opens the booking at the Time step with that space chosen. */
-export default async function BookSpacePage({ params }: PageProps<"/book/[slug]">) {
+export default async function BookSpacePage({ params, searchParams }: PageProps<"/book/[slug]">) {
   const settings = await getBookingSettings();
   if (settings.destination === "external") {
     redirect(settings.external_url);
@@ -23,8 +24,8 @@ export default async function BookSpacePage({ params }: PageProps<"/book/[slug]"
       <p className="mt-1 text-muted">Three quick steps, then pay online and you&apos;re confirmed.</p>
       <div className="mt-8">
         <Suspense fallback={<Skeleton className="h-[520px] rounded-2xl" />}>
-          {params.then(({ slug }) => (
-            <Wizard slug={slug} />
+          {Promise.all([params, searchParams]).then(([{ slug }, query]) => (
+            <Wizard slug={slug} preset={bookingPreset(query)} />
           ))}
         </Suspense>
       </div>
@@ -32,10 +33,13 @@ export default async function BookSpacePage({ params }: PageProps<"/book/[slug]"
   );
 }
 
-async function Wizard({ slug }: { slug: string }) {
+async function Wizard({ slug, preset }: { slug: string; preset: BookingPreset }) {
   if ((await getOptionalUser())?.type === "customer") {
-    // Signed-in customers book inside their dashboard.
-    redirect(`/dashboard/workspace/book/${encodeURIComponent(slug)}`);
+    // Signed-in customers book inside their dashboard, with the same date and time.
+    const query = new URLSearchParams(
+      Object.entries({ date: preset.date, start: preset.start_time, unit: preset.rate_unit, qty: preset.quantity?.toString() }).filter((entry): entry is [string, string] => Boolean(entry[1])),
+    ).toString();
+    redirect(`/dashboard/workspace/book/${encodeURIComponent(slug)}${query ? `?${query}` : ""}`);
   }
   let space: Space;
   try {
@@ -48,5 +52,5 @@ async function Wizard({ slug }: { slug: string }) {
   const locations = (catalogue?.locations ?? []).filter((location) => (location.spaces ?? []).length > 0);
 
   // Signed-in customers were sent to the dashboard above, so this is a guest (or staff) booking.
-  return <BookWizard locations={locations} user={null} initialSpace={space} />;
+  return <BookWizard locations={locations} user={null} initialSpace={space} preset={preset} />;
 }

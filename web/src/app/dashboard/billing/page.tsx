@@ -9,7 +9,8 @@ import { Card, CardHeader, EmptyState } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/loader";
 import { api } from "@/lib/api";
 import { requireCustomer } from "@/lib/session";
-import type { Invoice, Paginated, Payment } from "@/lib/types";
+import { SavedCards } from "@/components/billing/saved-cards";
+import type { Invoice, Paginated, Payment, SavedCard } from "@/lib/types";
 import { formatDate, formatNaira } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Billing" };
@@ -27,9 +28,10 @@ export default function BillingPage() {
 
 async function Billing() {
   await requireCustomer();
-  const [{ data: invoices }, { data: payments }] = await Promise.all([
+  const [{ data: invoices }, { data: payments }, { data: cards }] = await Promise.all([
     api<Paginated<Invoice>>("/billing/invoices"),
     api<Paginated<Payment>>("/billing/payments"),
+    api<{ data: SavedCard[] }>("/billing/cards"),
   ]);
   const outstanding = invoices.filter((invoice) => invoice.status === "unpaid");
 
@@ -96,6 +98,8 @@ async function Billing() {
           </div>
         )}
       </Card>
+
+      <SavedCards cards={cards} />
 
       <Card className="overflow-hidden">
         <CardHeader title="Payments" description="Every payment attempt, with receipts for successful ones." />

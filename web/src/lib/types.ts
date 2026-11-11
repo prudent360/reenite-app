@@ -234,6 +234,8 @@ export type Invoice = {
   amount_refunded: number;
   balance: number;
   is_payable: boolean;
+  /** A pass or membership invoice: paying by card can set up automatic renewal. */
+  for_plan?: boolean;
   has_pending_transfer?: boolean;
   due_at: string | null;
   is_overdue: boolean;
@@ -542,31 +544,39 @@ export type Booking = {
   created_at: string | null;
 };
 
+/** Renewal details shared by passes and memberships in "My plans". */
+export type PlanRenewalInfo = {
+  id: number;
+  name: string;
+  status: "pending" | "active" | "expired";
+  starts_at: string | null;
+  ends_at: string | null;
+  invoice_id: number | null;
+  invoice_payable: boolean;
+  /** This period is itself a renewal of an earlier one. */
+  is_renewal: boolean;
+  auto_renew: boolean;
+  /** Price of the next period, or null when the plan is no longer offered. */
+  renewal_price: number | null;
+  renewal_failure: string | null;
+  /** card: renews with the saved card · manual: waits for the customer · unavailable: plan no longer offered */
+  renewal_mode: "card" | "manual" | "unavailable";
+  renewal: { id: number; status: "pending" | "active"; starts_at: string | null; invoice_id: number | null; invoice_payable: boolean } | null;
+};
+
 export type MyPlans = {
-  passes: {
-    id: number;
-    name: string;
-    status: "pending" | "active";
+  passes: (PlanRenewalInfo & {
     credit_type: "visits" | "hours";
     credits: number;
     credits_left: number;
     period: "week" | "month";
-    starts_at: string | null;
-    ends_at: string | null;
-    invoice_id: number | null;
-    invoice_payable: boolean;
-  }[];
-  memberships: {
-    id: number;
-    name: string;
-    status: "pending" | "active";
+  })[];
+  memberships: (PlanRenewalInfo & {
     discount_percent: number;
     billing_period: "month" | "quarter" | "year";
-    starts_at: string | null;
-    ends_at: string | null;
-    invoice_id: number | null;
-    invoice_payable: boolean;
-  }[];
+  })[];
+  /** The card automatic renewals use. */
+  card: { id: number; label: string } | null;
 };
 
 export type AdminBookingDay = {
@@ -916,3 +926,41 @@ export type ClientAppointment = Pick<
 export type AppointmentClient = { id: number; name: string; email: string; phone: string | null; is_guest: boolean; history: ClientHistory };
 
 export type AppointmentSettings = { arrive_early_minutes: number; grace_minutes: number; message: string };
+
+/* ---------- Saved cards and renewals ---------- */
+
+export type SavedCard = {
+  id: number;
+  label: string;
+  brand: string | null;
+  last4: string;
+  expires: string | null;
+  is_expired: boolean;
+  bank: string | null;
+  is_default: boolean;
+  test_mode: boolean;
+  last_used_at: string | null;
+};
+
+export type RenewalRow = {
+  kind: "pass" | "membership";
+  id: number;
+  name: string;
+  customer: { id: number; name: string; email: string };
+  status: string;
+  ends_at: string | null;
+  price: number | null;
+  auto_renew: boolean;
+  card: string | null;
+  attempts: number;
+  last_attempt_at: string | null;
+  failure: string | null;
+  renewal_invoice_id: number | null;
+};
+
+export type RenewalsOverview = {
+  upcoming: RenewalRow[];
+  failed: RenewalRow[];
+  overdue: { id: number; number: string; customer: { id: number; name: string; email: string }; balance: number; due_at: string | null; reminders_sent: number }[];
+  stats: { renewing_14_days: number; auto_renew_share: number | null; overdue_total: number };
+};

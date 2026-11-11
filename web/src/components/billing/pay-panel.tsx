@@ -45,6 +45,7 @@ export function PayPanel({
   const [method, setMethod] = useState<Method | null>(methods[0]?.key ?? null);
   const [redirecting, startRedirect] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [saveCard, setSaveCard] = useState(Boolean(invoice.for_plan));
 
   if (methods.length === 0) {
     return (
@@ -57,10 +58,13 @@ export function PayPanel({
     );
   }
 
+  // Only Paystack can charge a saved card later, and only signed-in customers have cards to manage.
+  const canSaveCard = !pay && method === "paystack";
+
   function payOnline(gateway: string) {
     setError(null);
     startRedirect(async () => {
-      const result = pay ? await pay(gateway) : await startPayment(invoice.id, gateway);
+      const result = pay ? await pay(gateway) : await startPayment(invoice.id, gateway, canSaveCard && saveCard);
       if (result.ok && result.data) {
         // Leave the app for the gateway's secure checkout page.
         window.location.assign(result.data.redirect_url);
@@ -115,6 +119,19 @@ export function PayPanel({
 
         {method && method !== "bank_transfer" && (
           <>
+            {canSaveCard && (
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border p-3.5 text-sm">
+                <input type="checkbox" checked={saveCard} onChange={(event) => setSaveCard(event.target.checked)} className="mt-0.5 size-4 shrink-0 accent-brand-500" />
+                <span>
+                  <span className="block font-medium text-foreground">{invoice.for_plan ? "Save this card and renew automatically" : "Save this card for automatic renewals"}</span>
+                  <span className="block text-xs text-muted">
+                    {invoice.for_plan
+                      ? "We'll charge it the day before each period ends and email you 3 days before. Turn it off any time."
+                      : "Paystack keeps the card; we only keep the last 4 digits. Remove it any time from Billing."}
+                  </span>
+                </span>
+              </label>
+            )}
             <Button size="lg" className="w-full" onClick={() => payOnline(method)} disabled={redirecting}>
               {redirecting ? <DotLoader className="text-current" label="Opening secure checkout" /> : <><Lock className="size-4" /> Pay {formatNaira(invoice.balance)}</>}
             </Button>

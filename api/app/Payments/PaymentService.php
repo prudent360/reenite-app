@@ -6,9 +6,12 @@ use App\Enums\EmailTemplateKey;
 use App\Enums\InvoiceStatus;
 use App\Enums\PaymentStatus;
 use App\Events\InvoicePaid;
+use App\Models\CustomerMembership;
+use App\Models\CustomerPass;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\PaymentGateway;
+use App\Models\PaymentMethod;
 use App\Models\Refund;
 use App\Models\User;
 use App\Notifications\PaymentReceiptNotification;
@@ -42,7 +45,7 @@ class PaymentService
      * @param  (Closure(Payment): string)|null  $returnUrlFor
      * @return array{payment: Payment, redirect_url: string}
      */
-    public function startOnlinePayment(Invoice $invoice, string $gatewayCode, User $customer, ?Closure $returnUrlFor = null, ?string $cancelUrl = null): array
+    public function startOnlinePayment(Invoice $invoice, string $gatewayCode, User $customer, ?Closure $returnUrlFor = null, ?string $cancelUrl = null, bool $saveCard = false): array
     {
         $this->assertPayable($invoice);
 
@@ -58,6 +61,8 @@ class PaymentService
             'amount' => $invoice->balance(),
             'currency' => $invoice->currency,
             'status' => PaymentStatus::Pending,
+            // Only gateways that can charge a card again later are worth saving for.
+            'save_card' => $saveCard && $this->gateways->driver($gateway) instanceof ChargesSavedCards,
         ]);
 
         try {
@@ -102,6 +107,15 @@ class PaymentService
                 return $payment;
             }
 
+            if ($payment->save_card && $verified->reusableCard) {
+                $this->saveCard($payment, $verified->reusableCard);
+                // Saving a card while paying for a pass or membership means "renew this automatically".
+                $source = $payment->invoice->source;
+                if ($source instanceof CustomerPass || $source instanceof CustomerMembership) {
+                    $source->update(['auto_renew' => true, 'renewal_attempts' => 0, 'renewal_failure' => null]);
+                }
+            }
+
             return $this->markSucceeded($payment, [
                 'channel' => $verified->channel,
                 'gateway_reference' => $verified->gatewayReference ?? $payment->gateway_reference,
@@ -117,6 +131,84 @@ class PaymentService
         }
 
         return $payment;
+    }
+
+    /**
+     * Charges a saved card for the invoice's balance (automatic renewals). Returns the payment,
+     * which is either settled or failed with the bank's reason; it never waits on the customer.
+     */
+    public function chargeSavedCard(Invoice $invoice, PaymentMethod $card): Payment
+    {
+        $this->assertPayable($invoice);
+        $gateway = PaymentGateway::where('code', $card->gateway)->first();
+        abort_unless($gateway?->is_enabled && $gateway->isConfigured() && $gateway->mode === $card->mode, 422, 'Card payments are not available right now.');
+        $driver = $this->gateways->driver($gateway);
+        abort_unless($driver instanceof ChargesSavedCards, 422, 'This gateway cannot charge saved cards.');
+
+        $payment = Payment::create([
+            'reference' => Payment::newReference(),
+            'invoice_id' => $invoice->id,
+            'user_id' => $invoice->user_id,
+            'gateway' => $gateway->code->value,
+            'mode' => $gateway->mode,
+            'amount' => $invoice->balance(),
+            'currency' => $invoice->currency,
+            'status' => PaymentStatus::Pending,
+            'payment_method_id' => $card->id,
+        ]);
+
+        try {
+            $verified = $driver->chargeSavedCard($payment, $card);
+        } catch (GatewayException $exception) {
+            $payment->update(['status' => PaymentStatus::Failed, 'failure_reason' => $exception->getMessage()]);
+
+            return $payment;
+        }
+
+        if ($verified->status === 'success' && $verified->amount === $payment->amount && $verified->currency === $payment->currency) {
+            $card->update(['last_used_at' => now()]);
+
+            return $this->markSucceeded($payment, [
+                'channel' => $verified->channel ?? 'card',
+                'gateway_reference' => $verified->gatewayReference,
+                'gateway_data' => $verified->data,
+            ]);
+        }
+
+        $payment->update([
+            'status' => PaymentStatus::Failed,
+            'failure_reason' => match ($verified->status) {
+                'success' => 'Amount or currency did not match the invoice. Finance has been alerted.',
+                'pending' => 'The bank asked the cardholder to approve the payment, which can only be done at checkout.',
+                default => $verified->message ?: 'The bank declined the payment.',
+            },
+            'gateway_data' => $verified->data,
+        ]);
+        if ($verified->status === 'success') {
+            Log::warning('Saved card charge amount mismatch', ['reference' => $payment->reference, 'expected' => $payment->amount, 'got' => $verified->amount]);
+        }
+
+        return $payment;
+    }
+
+    /**
+     * Keeps the card the customer agreed to save. The same card (same gateway fingerprint)
+     * is updated rather than saved twice; a customer's first card becomes their default.
+     *
+     * @param  array{authorization_code: string, signature: string|null, email: string, brand: string|null, last4: string, exp_month: string|null, exp_year: string|null, bank: string|null}  $card
+     */
+    private function saveCard(Payment $payment, array $card): void
+    {
+        $existing = $card['signature']
+            ? PaymentMethod::where('user_id', $payment->user_id)->where('gateway', $payment->gateway)->where('mode', $payment->mode)->where('signature', $card['signature'])->first()
+            : null;
+        $attributes = $card + ['user_id' => $payment->user_id, 'gateway' => $payment->gateway, 'mode' => $payment->mode];
+
+        if ($existing) {
+            $existing->update($attributes);
+        } else {
+            PaymentMethod::create($attributes + ['is_default' => ! PaymentMethod::where('user_id', $payment->user_id)->exists()]);
+        }
     }
 
     /**

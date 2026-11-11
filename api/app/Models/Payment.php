@@ -19,6 +19,7 @@ use Illuminate\Support\Str;
     'reference', 'receipt_number', 'invoice_id', 'user_id', 'gateway', 'mode', 'amount', 'currency', 'status',
     'gateway_reference', 'channel', 'gateway_data', 'amount_refunded', 'proof_path', 'proof_name',
     'sender_name', 'transferred_on', 'reviewed_by', 'reviewed_at', 'review_note', 'failure_reason', 'paid_at',
+    'save_card', 'payment_method_id',
 ])]
 #[Hidden(['proof_path'])]
 class Payment extends Model
@@ -41,6 +42,7 @@ class Payment extends Model
             'transferred_on' => 'date',
             'reviewed_at' => 'datetime',
             'paid_at' => 'datetime',
+            'save_card' => 'boolean',
         ];
     }
 

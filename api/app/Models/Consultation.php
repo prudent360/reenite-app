@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable([
     'user_id', 'consultation_type_id', 'name', 'mode', 'starts_at', 'ends_at', 'topic', 'status', 'hold_expires_at', 'price',
     'invoice_id', 'assigned_to', 'meeting_details', 'staff_notes', 'confirmed_at', 'reminded_at', 'cancelled_at', 'cancelled_by',
-    'cancel_reason', 'refund_amount',
+    'cancel_reason', 'refund_amount', 'nudged_at',
 ])]
 class Consultation extends Model
 {
@@ -66,6 +66,7 @@ class Consultation extends Model
             'confirmed_at' => 'datetime',
             'reminded_at' => 'datetime',
             'cancelled_at' => 'datetime',
+            'nudged_at' => 'datetime',
             'price' => 'integer',
             'refund_amount' => 'integer',
         ];

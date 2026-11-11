@@ -16,6 +16,8 @@ enum EmailTemplateKey: string
     case PaymentReceipt = 'payment_receipt';
     case TransferReceived = 'transfer_received';
     case TransferRejected = 'transfer_rejected';
+    case InvoiceReminder = 'invoice_reminder';
+    case CheckoutNudge = 'checkout_nudge';
     case OrderReceived = 'order_received';
     case OrderUpdated = 'order_updated';
     case InfoRequested = 'info_requested';
@@ -31,6 +33,9 @@ enum EmailTemplateKey: string
     case PassExpiring = 'pass_expiring';
     case MembershipActivated = 'membership_activated';
     case MembershipRenewalDue = 'membership_renewal_due';
+    case PassRenewalDue = 'pass_renewal_due';
+    case RenewalUpcoming = 'renewal_upcoming';
+    case RenewalFailed = 'renewal_failed';
     case MailReceived = 'mail_received';
     case MailScanned = 'mail_scanned';
     case ComplianceDueSoon = 'compliance_due_soon';
@@ -60,11 +65,12 @@ enum EmailTemplateKey: string
     {
         return match ($this) {
             self::EmailVerification, self::PasswordReset, self::StaffInvite, self::PasswordChanged => 'Account',
-            self::InvoiceIssued, self::PaymentReceipt, self::TransferReceived, self::TransferRejected => 'Billing',
+            self::InvoiceIssued, self::PaymentReceipt, self::TransferReceived, self::TransferRejected, self::InvoiceReminder, self::CheckoutNudge => 'Billing',
             self::OrderReceived, self::OrderUpdated, self::InfoRequested, self::OrderCompleted, self::OrderMessage => 'Orders',
             self::BookingConfirmed, self::BookingAwaitingPayment, self::BookingPendingApproval, self::BookingReminder,
             self::BookingCancelled, self::GuestAccountInvite => 'Bookings',
-            self::PassActivated, self::PassExpiring, self::MembershipActivated, self::MembershipRenewalDue => 'Passes and memberships',
+            self::PassActivated, self::PassExpiring, self::MembershipActivated, self::MembershipRenewalDue,
+            self::PassRenewalDue, self::RenewalUpcoming, self::RenewalFailed => 'Passes and memberships',
             self::MailReceived, self::MailScanned => 'Virtual office',
             self::ComplianceDueSoon, self::ComplianceOverdue => 'Compliance',
             self::ConsultationConfirmed, self::ConsultationReminder, self::ConsultationCancelled => 'Consultations',
@@ -86,6 +92,8 @@ enum EmailTemplateKey: string
             self::PaymentReceipt => 'Payment receipt',
             self::TransferReceived => 'Transfer received',
             self::TransferRejected => 'Transfer not confirmed',
+            self::InvoiceReminder => 'Payment reminder',
+            self::CheckoutNudge => 'Finish your booking',
             self::OrderReceived => 'Order received',
             self::OrderUpdated => 'Order progress update',
             self::InfoRequested => 'Information needed',
@@ -101,6 +109,9 @@ enum EmailTemplateKey: string
             self::PassExpiring => 'Pass running out',
             self::MembershipActivated => 'Membership activated',
             self::MembershipRenewalDue => 'Membership renewal due',
+            self::PassRenewalDue => 'Pass ending: renew',
+            self::RenewalUpcoming => 'Automatic renewal coming up',
+            self::RenewalFailed => 'Automatic renewal failed',
             self::StaffOrderAssigned => 'Order assigned to you',
             self::StaffTransferToReview => 'Bank transfer to check',
             self::StaffNewBooking => 'New booking',
@@ -134,6 +145,8 @@ enum EmailTemplateKey: string
             self::PaymentReceipt => 'Sent when a payment succeeds, with a link to the receipt.',
             self::TransferReceived => 'Confirms we received proof of a bank transfer and are checking it.',
             self::TransferRejected => "Sent when Finance can't confirm a bank transfer.",
+            self::InvoiceReminder => 'Sent 3 days before an invoice is due, on the day, then 3 and 7 days after if it is still unpaid.',
+            self::CheckoutNudge => 'Sent once when a booking, consultation, pass or membership was started but not paid for.',
             self::OrderReceived => 'Sent once an order is paid, confirming the team has it.',
             self::OrderUpdated => 'Sent when an order moves to a new customer-visible stage.',
             self::InfoRequested => 'Sent when the officer needs something from the customer.',
@@ -149,6 +162,9 @@ enum EmailTemplateKey: string
             self::PassExpiring => 'Sent a few days before a pass period ends while visits are left.',
             self::MembershipActivated => 'Sent when a membership starts.',
             self::MembershipRenewalDue => 'Sent before a membership renews, with the amount due.',
+            self::PassRenewalDue => 'Sent 3 days before a pass ends, when it is not set to renew automatically.',
+            self::RenewalUpcoming => 'Sent 3 days before a pass or membership renews automatically with a saved card.',
+            self::RenewalFailed => 'Sent when the saved card could not be charged for a renewal.',
             self::StaffOrderAssigned => 'Tells an officer an order has been assigned to them.',
             self::StaffTransferToReview => 'Tells Finance a customer has sent proof of a bank transfer.',
             self::StaffNewBooking => 'Tells the front desk about a new confirmed booking.',
@@ -186,6 +202,9 @@ enum EmailTemplateKey: string
             self::BookingConfirmed => ['first_name', 'space_name', 'booking_date', 'booking_time', 'check_in_code'],
             self::BookingReminder => ['first_name', 'space_name', 'booking_date', 'booking_time'],
             self::InvoiceIssued => ['first_name', 'invoice_number', 'amount', 'due_date'],
+            self::InvoiceReminder => ['first_name', 'invoice_number', 'amount', 'when'],
+            self::RenewalUpcoming => ['first_name', 'plan_name', 'renews_on', 'amount'],
+            self::RenewalFailed => ['first_name', 'plan_name', 'amount'],
             self::OrderUpdated => ['first_name', 'service_name', 'order_reference', 'stage_name'],
             self::InfoRequested => ['first_name', 'service_name', 'order_reference'],
             self::OrderCompleted => ['first_name', 'service_name', 'order_reference'],
@@ -213,6 +232,7 @@ enum EmailTemplateKey: string
             'location_address' => 'Location address', 'booking_date' => 'Date', 'booking_time' => 'Start and end time', 'guests' => 'Number of people',
         ];
 
+        $renewal = ['plan_name' => 'Pass or membership', 'renews_on' => 'Date the next period starts', 'amount' => 'Price of the next period', 'card' => 'Saved card, e.g. Visa •••• 4081'];
         $compliance = ['business_name' => 'Business', 'deadline' => 'What is due, e.g. File VAT return', 'period' => 'Period it covers, e.g. October 2026', 'due_date' => 'Due date', 'days_left' => 'e.g. "in 3 days" or "2 days ago"', 'authority' => 'Who it is filed with'];
         $consultation = ['consultation_reference' => 'Consultation number', 'consultation_name' => 'Type of consultation', 'consultation_date' => 'Date', 'consultation_time' => 'Start and end time', 'consultation_mode' => 'In person, video call or phone call', 'meeting_details' => 'Where or how to join', 'topic' => 'What they want to discuss'];
 
@@ -232,6 +252,8 @@ enum EmailTemplateKey: string
             self::PaymentReceipt => $common + ['invoice_number' => 'Invoice number', 'amount' => 'Amount paid', 'receipt_number' => 'Receipt number', 'payment_method' => 'How they paid'],
             self::TransferReceived => $common + ['invoice_number' => 'Invoice number', 'amount' => 'Amount transferred'],
             self::TransferRejected => $common + ['invoice_number' => 'Invoice number', 'amount' => 'Amount transferred', 'reason' => 'Why it was rejected'],
+            self::InvoiceReminder => $common + ['invoice_number' => 'Invoice number', 'amount' => 'Amount due', 'due_date' => 'Due date', 'when' => 'e.g. "is due in 3 days" or "was due 7 days ago"', 'for' => 'What the invoice is for'],
+            self::CheckoutNudge => $common + ['item' => 'What they were buying', 'detail' => 'e.g. "The time is still free"'],
             self::OrderReceived => $common + ['order_reference' => 'Order number', 'service_name' => 'Service', 'due_date' => 'Expected completion date'],
             self::OrderUpdated => $common + ['order_reference' => 'Order number', 'service_name' => 'Service', 'stage_name' => 'New stage'],
             self::InfoRequested => $common + ['order_reference' => 'Order number', 'service_name' => 'Service', 'message' => "The officer's request", 'officer_name' => 'Officer name'],
@@ -246,6 +268,9 @@ enum EmailTemplateKey: string
             self::PassExpiring => $common + ['pass_name' => 'Pass', 'credits_left' => 'Visits or hours left', 'valid_until' => 'End of the current period'],
             self::MembershipActivated => $common + ['plan_name' => 'Membership', 'discount' => 'Booking discount, e.g. 15%', 'renews_on' => 'Renewal date', 'amount' => 'Amount paid'],
             self::MembershipRenewalDue => $common + ['plan_name' => 'Membership', 'renews_on' => 'Renewal date', 'amount' => 'Amount due'],
+            self::PassRenewalDue => $common + ['plan_name' => 'Pass', 'renews_on' => 'Date it ends', 'amount' => 'Price of the next period'],
+            self::RenewalUpcoming => $common + $renewal,
+            self::RenewalFailed => $common + $renewal + ['reason' => "The bank's reason", 'next_try' => 'When we will try again'],
             self::StaffOrderAssigned => $common + ['order_reference' => 'Order number', 'service_name' => 'Service', 'customer_name' => 'Customer', 'due_date' => 'Due date', 'assigned_by' => 'Who assigned it'],
             self::StaffTransferToReview => $common + ['invoice_number' => 'Invoice number', 'amount' => 'Amount transferred', 'customer_name' => 'Customer'],
             self::StaffNewBooking => $common + $booking + ['customer_name' => 'Customer or guest', 'amount' => 'Amount paid'],
@@ -429,6 +454,27 @@ enum EmailTemplateKey: string
                 'button_text' => 'Renew now',
                 'footer' => "If you don't renew, your membership ends on that date.",
             ],
+            self::PassRenewalDue => [
+                'subject' => 'Your {{plan_name}} pass ends on {{renews_on}}',
+                'heading' => 'Hi {{first_name}},',
+                'body' => "Your {{plan_name}} pass ends on {{renews_on}}. Renew for {{amount}} to keep booking with it; the new period starts when this one ends, so you lose nothing by renewing early.\n\nTip: switch on automatic renewal and we'll take care of it every time.",
+                'button_text' => 'Renew my pass',
+                'footer' => null,
+            ],
+            self::RenewalUpcoming => [
+                'subject' => 'Your {{plan_name}} renews on {{renews_on}}',
+                'heading' => 'Hi {{first_name}},',
+                'body' => "Just a heads-up: your {{plan_name}} renews automatically on {{renews_on}}. We'll charge {{amount}} to your {{card}}.\n\nNothing to do if that's fine. To stop it or use another card, change it in your dashboard before then.",
+                'button_text' => 'Manage renewal',
+                'footer' => 'You can turn automatic renewal off at any time.',
+            ],
+            self::RenewalFailed => [
+                'subject' => "We couldn't renew your {{plan_name}}",
+                'heading' => 'Hi {{first_name}},',
+                'body' => "We tried to charge {{amount}} to your {{card}} to renew your {{plan_name}}, but it didn't go through.\n\nThe bank said: {{reason}}\n\n{{next_try}} You can also pay now with another card or by bank transfer.",
+                'button_text' => 'Pay now',
+                'footer' => 'Your benefits continue until the end of your current period.',
+            ],
             self::StaffOrderAssigned => [
                 'subject' => 'New order for you: {{order_reference}}',
                 'heading' => 'Hi {{first_name}},',
@@ -554,6 +600,20 @@ enum EmailTemplateKey: string
                 'body' => "{{client_name}} can't make {{appointment_title}} on {{appointment_date}}, {{appointment_time}} and asked for another time.\n\nTheir note: {{note}}\nPhone: {{client_phone}}\n\nPick a new time from the appointment page and they'll be told automatically.",
                 'button_text' => 'Open the appointment',
                 'footer' => null,
+            ],
+            self::InvoiceReminder => [
+                'subject' => 'Reminder: invoice {{invoice_number}} {{when}}',
+                'heading' => 'Hi {{first_name}},',
+                'body' => "A friendly reminder that invoice {{invoice_number}} for {{for}} ({{amount}}) {{when}}.\n\nPay online in a minute, or by bank transfer from your Billing page.",
+                'button_text' => 'Pay {{amount}}',
+                'footer' => 'Already paid? Thank you. It can take a moment to show, and you can ignore this email.',
+            ],
+            self::CheckoutNudge => [
+                'subject' => 'Still want {{item}}?',
+                'heading' => 'Hi {{first_name}},',
+                'body' => "You started booking {{item}} but didn't finish paying.\n\n{{detail}}",
+                'button_text' => 'Finish booking',
+                'footer' => "Changed your mind? No problem, you don't need to do anything.",
             ],
             self::StaffMailRequest => [
                 'subject' => 'Mail request: {{request}} for {{mailbox_number}}',

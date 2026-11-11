@@ -1,19 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { ArrowRight, ArrowUpRight, Armchair, BadgePercent, Ticket } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Armchair } from "lucide-react";
 import { PageHeader } from "@/components/app/page-header";
 import { BookingStatusBadge } from "@/components/booking/booking-parts";
+import { BookingCountdownChip } from "@/components/booking/booking-tracker";
 import { BuyPlanButton } from "@/components/booking/buy-plan-button";
+import { PlanCard } from "@/components/booking/plan-card";
 import { ButtonLink } from "@/components/ui/button";
-import { Alert, Badge, Card, CardHeader, EmptyState } from "@/components/ui/card";
+import { Alert, Card, CardHeader, EmptyState } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/loader";
 import { api } from "@/lib/api";
 import { bookingHref, getBookingSettings, getWorkspaceCatalogue } from "@/lib/booking";
 import { formatWhen } from "@/lib/booking-format";
 import { requireCustomer } from "@/lib/session";
 import type { Booking, MyPlans, Paginated } from "@/lib/types";
-import { formatDate, formatNaira } from "@/lib/utils";
+import { formatNaira } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Workspace" };
 
@@ -68,42 +70,10 @@ async function Workspace({ external }: { external: boolean }) {
       {(plans.passes.length > 0 || plans.memberships.length > 0) && (
         <div className="grid gap-4 md:grid-cols-2">
           {plans.memberships.map((membership) => (
-            <Card key={`m-${membership.id}`} className="p-5">
-              <div className="flex items-center justify-between">
-                <p className="flex items-center gap-2 font-semibold text-foreground">
-                  <BadgePercent className="size-5 text-brand-500" /> {membership.name} membership
-                </p>
-                <Badge tone={membership.status === "active" ? "success" : "warning"}>{membership.status === "active" ? "Active" : "Awaiting payment"}</Badge>
-              </div>
-              <p className="mt-2 text-sm text-muted">
-                {membership.status === "active" ? `${membership.discount_percent}% off every booking until ${formatDate(membership.ends_at)}.` : "Pay the invoice to start your membership."}
-              </p>
-              {membership.invoice_payable && membership.invoice_id && (
-                <ButtonLink href={`/dashboard/billing/invoices/${membership.invoice_id}`} size="sm" className="mt-3">
-                  Pay now
-                </ButtonLink>
-              )}
-            </Card>
+            <PlanCard key={`m-${membership.id}`} plan={membership} kind="memberships" card={plans.card} />
           ))}
           {plans.passes.map((pass) => (
-            <Card key={`p-${pass.id}`} className="p-5">
-              <div className="flex items-center justify-between">
-                <p className="flex items-center gap-2 font-semibold text-foreground">
-                  <Ticket className="size-5 text-brand-500" /> {pass.name}
-                </p>
-                <Badge tone={pass.status === "active" ? "success" : "warning"}>{pass.status === "active" ? "Active" : "Awaiting payment"}</Badge>
-              </div>
-              <p className="mt-2 text-sm text-muted">
-                {pass.status === "active"
-                  ? `${pass.credits_left} of ${pass.credits} ${pass.credit_type} left, until ${formatDate(pass.ends_at)}. Choose “Use my pass” when you book.`
-                  : "Pay the invoice to start your pass."}
-              </p>
-              {pass.invoice_payable && pass.invoice_id && (
-                <ButtonLink href={`/dashboard/billing/invoices/${pass.invoice_id}`} size="sm" className="mt-3">
-                  Pay now
-                </ButtonLink>
-              )}
-            </Card>
+            <PlanCard key={`p-${pass.id}`} plan={pass} kind="passes" card={plans.card} />
           ))}
         </div>
       )}
@@ -158,7 +128,7 @@ function BookingList({ bookings }: { bookings: Booking[] }) {
           <Link href={`/dashboard/workspace/${booking.reference}`} className="flex flex-col gap-2 px-5 py-4 transition hover:bg-surface-muted sm:flex-row sm:items-center sm:justify-between sm:px-6">
             <div className="min-w-0">
               <p className="flex flex-wrap items-center gap-2 font-semibold text-foreground">
-                {booking.space_name} <BookingStatusBadge booking={booking} />
+                {booking.space_name} <BookingStatusBadge booking={booking} /> <BookingCountdownChip booking={booking} />
               </p>
               <p className="mt-0.5 text-sm text-muted">{formatWhen(booking)}</p>
             </div>

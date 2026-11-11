@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\V1\Admin\DashboardController;
 use App\Http\Controllers\Api\V1\Admin\Finance\CouponController;
 use App\Http\Controllers\Api\V1\Admin\Finance\InvoiceController as AdminInvoiceController;
 use App\Http\Controllers\Api\V1\Admin\Finance\PaymentController as AdminPaymentController;
+use App\Http\Controllers\Api\V1\Admin\Finance\RenewalController;
 use App\Http\Controllers\Api\V1\Admin\Finance\SummaryController as FinanceSummaryController;
 use App\Http\Controllers\Api\V1\Admin\LegalDocumentController;
 use App\Http\Controllers\Api\V1\Admin\OrderController as AdminOrderController;
@@ -43,6 +44,7 @@ use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\Auth\EmailVerificationController;
 use App\Http\Controllers\Api\V1\Auth\PasswordResetController;
 use App\Http\Controllers\Api\V1\Billing\BillingController;
+use App\Http\Controllers\Api\V1\Billing\PaymentMethodController;
 use App\Http\Controllers\Api\V1\BookingController;
 use App\Http\Controllers\Api\V1\BusinessController;
 use App\Http\Controllers\Api\V1\CatalogueController;
@@ -163,6 +165,8 @@ Route::prefix('v1')->name('v1.')->group(function () {
 
         Route::post('plans/passes', [PlanController::class, 'buyPass'])->middleware('throttle:10,1')->name('plans.passes.store');
         Route::post('plans/memberships', [PlanController::class, 'buyMembership'])->middleware('throttle:10,1')->name('plans.memberships.store');
+        Route::patch('plans/{kind}/{id}/auto-renew', [PlanController::class, 'autoRenew'])->whereIn('kind', ['passes', 'memberships'])->whereNumber('id')->name('plans.auto-renew');
+        Route::post('plans/{kind}/{id}/renew', [PlanController::class, 'renew'])->whereIn('kind', ['passes', 'memberships'])->whereNumber('id')->middleware('throttle:10,1')->name('plans.renew');
 
         Route::prefix('billing')->name('billing.')->group(function () {
             Route::get('options', [BillingController::class, 'options'])->name('options');
@@ -177,6 +181,9 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::post('payments/{payment:reference}/verify', [BillingController::class, 'verify'])->middleware('throttle:20,1')->withoutScopedBindings()->name('payments.verify');
             Route::get('payments/{payment:reference}/receipt', [BillingController::class, 'receipt'])->name('payments.receipt');
             Route::get('payments/{payment:reference}/proof', [BillingController::class, 'proof'])->name('payments.proof');
+            Route::get('cards', [PaymentMethodController::class, 'index'])->name('cards.index');
+            Route::post('cards/{card}/default', [PaymentMethodController::class, 'makeDefault'])->name('cards.default');
+            Route::delete('cards/{card}', [PaymentMethodController::class, 'destroy'])->name('cards.destroy');
         });
 
         Route::prefix('admin')->name('admin.')->middleware(['staff', 'audit'])->group(function () {
@@ -313,6 +320,7 @@ Route::prefix('v1')->name('v1.')->group(function () {
                 Route::apiResource('coupons', CouponController::class)->middleware('permission:coupons.manage');
                 Route::middleware('permission:payments.view')->group(function () {
                     Route::get('summary', FinanceSummaryController::class)->name('summary');
+                    Route::get('renewals', RenewalController::class)->name('renewals');
                     Route::get('payments', [AdminPaymentController::class, 'index'])->name('payments.index');
                     Route::get('payments/{payment:reference}', [AdminPaymentController::class, 'show'])->name('payments.show');
                     Route::get('payments/{payment:reference}/proof', [AdminPaymentController::class, 'proof'])->name('payments.proof');

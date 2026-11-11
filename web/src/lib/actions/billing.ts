@@ -8,9 +8,9 @@ import type { FormState, Payment } from "@/lib/types";
  * Starts an online payment. The client then sends the browser to `data.redirect_url`
  * (the gateway's own checkout page). The amount is decided by the API, never here.
  */
-export async function startPayment(invoiceId: number, gateway: string): Promise<FormState & { data?: { reference: string; redirect_url: string } }> {
+export async function startPayment(invoiceId: number, gateway: string, saveCard = false): Promise<FormState & { data?: { reference: string; redirect_url: string } }> {
   try {
-    const data = await api<{ reference: string; redirect_url: string }>(`/billing/invoices/${invoiceId}/pay`, { method: "POST", body: { gateway } });
+    const data = await api<{ reference: string; redirect_url: string }>(`/billing/invoices/${invoiceId}/pay`, { method: "POST", body: { gateway, save_card: saveCard } });
     return { ok: true, data };
   } catch (error) {
     return toFormState(error);
@@ -57,4 +57,47 @@ export async function removeCoupon(invoiceId: number): Promise<FormState> {
   }
   refresh();
   return { ok: true, message: "Discount removed." };
+}
+
+/* ---------- Saved cards ---------- */
+
+export async function makeDefaultCard(cardId: number): Promise<FormState> {
+  try {
+    const { message } = await api<{ message: string }>(`/billing/cards/${cardId}/default`, { method: "POST" });
+    refresh();
+    return { ok: true, message };
+  } catch (error) {
+    return toFormState(error);
+  }
+}
+
+export async function removeCard(cardId: number): Promise<FormState> {
+  try {
+    await api(`/billing/cards/${cardId}`, { method: "DELETE" });
+    refresh();
+    return { ok: true, message: "Card removed." };
+  } catch (error) {
+    return toFormState(error);
+  }
+}
+
+/* ---------- Renewals ---------- */
+
+export async function setAutoRenew(kind: "passes" | "memberships", id: number, on: boolean): Promise<FormState> {
+  try {
+    const { message } = await api<{ message: string }>(`/plans/${kind}/${id}/auto-renew`, { method: "PATCH", body: { auto_renew: on } });
+    refresh();
+    return { ok: true, message };
+  } catch (error) {
+    return toFormState(error);
+  }
+}
+
+export async function renewPlan(kind: "passes" | "memberships", id: number): Promise<FormState & { invoiceId?: number }> {
+  try {
+    const { invoice_id } = await api<{ invoice_id: number }>(`/plans/${kind}/${id}/renew`, { method: "POST" });
+    return { ok: true, invoiceId: invoice_id };
+  } catch (error) {
+    return toFormState(error);
+  }
 }

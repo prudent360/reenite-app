@@ -18,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  */
 #[Fillable([
     'user_id', 'source_type', 'source_id', 'status', 'currency', 'subtotal', 'total', 'coupon_code', 'coupon_discount',
-    'amount_paid', 'amount_refunded', 'due_at', 'paid_at', 'voided_at', 'notes', 'created_by',
+    'amount_paid', 'amount_refunded', 'due_at', 'paid_at', 'voided_at', 'notes', 'created_by', 'reminders_sent',
 ])]
 class Invoice extends Model
 {
@@ -40,6 +40,7 @@ class Invoice extends Model
             'due_at' => 'date',
             'paid_at' => 'datetime',
             'voided_at' => 'datetime',
+            'reminders_sent' => 'array',
         ];
     }
 

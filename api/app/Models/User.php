@@ -148,6 +148,16 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Cards saved for automatic renewals.
+     *
+     * @return HasMany<PaymentMethod, $this>
+     */
+    public function paymentMethods(): HasMany
+    {
+        return $this->hasMany(PaymentMethod::class);
+    }
+
+    /**
      * @return HasMany<Consultation, $this>
      */
     public function consultations(): HasMany

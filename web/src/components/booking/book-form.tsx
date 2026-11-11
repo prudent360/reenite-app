@@ -9,7 +9,7 @@ import { Alert, Card, CardHeader } from "@/components/ui/card";
 import { TextField, TextareaField } from "@/components/ui/form";
 import { DotLoader } from "@/components/ui/loader";
 import { createBooking, getAvailability, getQuote, getSeatMap, type BookingInput } from "@/lib/actions/bookings";
-import { bookingToday, formatWhen } from "@/lib/booking-format";
+import { bookingToday, formatWhen, type BookingPreset } from "@/lib/booking-format";
 import type { BookingQuote, DayAvailability, RateUnit, SeatMap, Space, User } from "@/lib/types";
 import { cn, formatNaira } from "@/lib/utils";
 import { formatMinutes, formatTime as formatClock, rateUnits } from "@/lib/workspace";
@@ -38,6 +38,7 @@ export function BookForm({
   onNext,
   onBack,
   inDashboard = false,
+  preset,
 }: {
   space: Space;
   user: User | null;
@@ -46,16 +47,18 @@ export function BookForm({
   onBack: () => void;
   /** Signed-in customers book inside their dashboard and land on its booking page. */
   inDashboard?: boolean;
+  /** Starting values from a link ("Need more time?", "finish your booking"). */
+  preset?: BookingPreset;
 }) {
   const router = useRouter();
   const rates = (space.rates ?? []).filter((rate) => rate.is_active);
   const shared = space.type?.booking_mode === "shared";
 
-  const [unit, setUnit] = useState<RateUnit>(rates[0]?.unit ?? "hour");
-  const [quantity, setQuantity] = useState(unit === "hour" ? Math.max(1, Math.round(space.min_duration_minutes / 60)) : 1);
+  const [unit, setUnit] = useState<RateUnit>(() => (preset?.rate_unit && rates.some((rate) => rate.unit === preset.rate_unit) ? preset.rate_unit : (rates[0]?.unit ?? "hour")));
+  const [quantity, setQuantity] = useState(() => preset?.quantity ?? (unit === "hour" ? Math.max(1, Math.round(space.min_duration_minutes / 60)) : 1));
   const [seats, setSeats] = useState(1);
-  const [date, setDate] = useState(bookingToday);
-  const [startTime, setStartTime] = useState<string | null>(null);
+  const [date, setDate] = useState(() => (preset?.date && preset.date >= bookingToday() ? preset.date : bookingToday()));
+  const [startTime, setStartTime] = useState<string | null>(preset?.start_time ?? null);
   const [addons, setAddons] = useState<Record<number, number>>({});
   const [usePass, setUsePass] = useState(false);
   // Hot desks with named seats: "any free seat" unless the customer picks.

@@ -1,4 +1,4 @@
-import type { Booking, BookingStatus } from "./types";
+import type { Booking, BookingStatus, RateUnit } from "./types";
 
 /** Bookings are shown in Uyo time whatever the visitor's own timezone. */
 export const BOOKING_TIMEZONE = "Africa/Lagos";
@@ -36,3 +36,21 @@ export const bookingTones: Record<BookingStatus, "warning" | "info" | "success" 
   expired: "neutral",
   cancelled: "danger",
 };
+
+/** Booking form values carried in a link, e.g. "Need more time?" or a "finish your booking" email. */
+export type BookingPreset = { date?: string; start_time?: string; rate_unit?: RateUnit; quantity?: number };
+
+/** Reads ?date=YYYY-MM-DD&start=HH:MM&unit=hour&qty=1, ignoring anything malformed. */
+export function bookingPreset(query: Record<string, string | string[] | undefined>): BookingPreset {
+  const value = (key: string) => (typeof query[key] === "string" ? (query[key] as string) : undefined);
+  const date = value("date");
+  const start = value("start");
+  const unit = value("unit");
+  const quantity = Number(value("qty"));
+  return {
+    ...(date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? { date } : {}),
+    ...(start && /^\d{2}:\d{2}$/.test(start) ? { start_time: start } : {}),
+    ...(unit && ["hour", "day", "week", "month"].includes(unit) ? { rate_unit: unit as RateUnit } : {}),
+    ...(Number.isInteger(quantity) && quantity > 0 && quantity <= 24 ? { quantity } : {}),
+  };
+}

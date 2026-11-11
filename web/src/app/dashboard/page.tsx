@@ -29,6 +29,7 @@ import { api } from "@/lib/api";
 import { requireCustomer } from "@/lib/session";
 import { formatWhen } from "@/lib/booking-format";
 import { HealthBadge, HealthIssues, HealthRing } from "@/components/businesses/health";
+import { BookingCountdownChip } from "@/components/booking/booking-tracker";
 import type { Agreement, Booking, Business, Invoice, Order, Paginated, User, VaultFile } from "@/lib/types";
 import { cn, firstName, formatNaira } from "@/lib/utils";
 
@@ -162,7 +163,9 @@ async function Overview({ searchParams }: { searchParams: PageProps<"/dashboard"
               <Ticket className="size-6" />
             </span>
             <span>
-              <span className="block text-sm text-muted">Your next booking</span>
+              <span className="flex flex-wrap items-center gap-2 text-sm text-muted">
+                Your next booking <BookingCountdownChip booking={next} />
+              </span>
               <span className="block font-semibold text-foreground">
                 {next.space_name} · {formatWhen(next)}
               </span>
@@ -317,7 +320,10 @@ async function Overview({ searchParams }: { searchParams: PageProps<"/dashboard"
                 <li key={booking.reference}>
                   <Link href={`/dashboard/workspace/${booking.reference}`} className="flex items-center justify-between gap-3 px-5 py-4 hover:bg-surface-muted/50 sm:px-7">
                     <span className="min-w-0">
-                      <span className="block truncate font-semibold text-foreground">{booking.space_name}</span>
+                      <span className="flex flex-wrap items-center gap-2">
+                        <span className="truncate font-semibold text-foreground">{booking.space_name}</span>
+                        <BookingCountdownChip booking={booking} />
+                      </span>
                       <span className="block text-sm text-muted">{formatWhen(booking)}</span>
                     </span>
                     {booking.check_in_code ? (

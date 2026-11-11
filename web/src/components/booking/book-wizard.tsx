@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import type { BookingPreset } from "@/lib/booking-format";
 import { AlertCircle, ArrowRight } from "lucide-react";
 import { BookForm } from "@/components/booking/book-form";
 import { SpacePicker } from "@/components/booking/space-picker";
@@ -20,11 +21,14 @@ export function BookWizard({
   locations,
   user,
   initialSpace = null,
+  preset,
   inDashboard = false,
 }: {
   locations: Location[];
   user: User | null;
   initialSpace?: Space | null;
+  /** Date, time and length from a link; applies to the space the page opened with. */
+  preset?: BookingPreset;
   inDashboard?: boolean;
 }) {
   const [step, setStep] = useState(initialSpace ? 1 : 0);
@@ -91,7 +95,16 @@ export function BookWizard({
       {/* Stays mounted while on step one, so the chosen time survives a look back at the spaces. */}
       {space && (
         <div hidden={step === 0}>
-          <BookForm key={space.slug} space={space} user={user} step={step === 2 ? "details" : "time"} onNext={() => go(2)} onBack={() => go(step - 1)} inDashboard={inDashboard} />
+          <BookForm
+            key={space.slug}
+            space={space}
+            user={user}
+            step={step === 2 ? "details" : "time"}
+            onNext={() => go(2)}
+            onBack={() => go(step - 1)}
+            inDashboard={inDashboard}
+            preset={space.slug === initialSpace?.slug ? preset : undefined}
+          />
         </div>
       )}
     </div>

@@ -117,6 +117,8 @@ Use your own home folder (run `pwd` over SSH to see it). This one job runs every
 | Send queued emails and jobs (`QUEUE_FROM_SCHEDULER=true`) | every minute |
 | Mark finished bookings complete | every 15 minutes |
 | Booking and consultation reminders, ending passes and memberships | hourly |
+| Renewals: 3-day notices, charging saved cards for auto-renew (up to 3 daily tries), cancelling renewals unpaid 14 days after the plan ended | hourly |
+| Payment reminders (3 days before an invoice is due, on the day, 3 and 7 days late) and one "finish your booking" email for abandoned checkouts | daily, 9am Lagos time |
 | Roll the compliance calendar forward (monthly VAT and PAYE, yearly returns) | daily, 5am Lagos time |
 | Compliance deadline reminders (14 days, 3 days, and once when missed) | daily, 8am Lagos time |
 | Database backup | daily, 2am Lagos time |
@@ -225,6 +227,14 @@ php artisan db:seed --class=ConsultationTypeSeeder --force
 - The website passes each visitor's real IP address to the API, signed with `INTERNAL_API_KEY`. That is why both sides need the same secret.
 - Payment keys are stored encrypted. Uploaded documents are private and stream through the website only to people allowed to see them.
 - `APP_DEBUG=false` in production, so error pages never show code or settings.
+
+---
+
+## Automatic renewals (Paystack)
+
+Customers can tick **"Save this card"** when paying by card with Paystack. Paystack keeps the card; we store only its reusable authorisation (encrypted) and the last 4 digits. Passes and memberships set to renew automatically are charged to the default card the day before they end. Customers manage cards under Billing and switch renewal on or off on their Workspace page; staff see what's renewing, what failed and what's overdue under **Admin > Finance > Renewals**.
+
+Saved cards belong to the Paystack mode they were saved in: test cards are never charged in live mode, so customers save their card again on their first live payment.
 
 ---
 

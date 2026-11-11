@@ -13,8 +13,8 @@ use App\Payments\InvoiceService;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Buying flexible passes and memberships. Each purchase covers one period from when it's paid;
- * customers buy again to renew.
+ * Buying flexible passes and memberships. Each purchase covers one period from when it's paid.
+ * A renewal is a new purchase linked to the current one; it starts when the current one ends.
  */
 class PlanService
 {
@@ -23,13 +23,16 @@ class PlanService
     /**
      * Creates the pass (waiting for payment) and its invoice.
      */
-    public function buyPass(User $customer, PassPlan $plan): CustomerPass
+    public function buyPass(User $customer, PassPlan $plan, ?CustomerPass $renewalOf = null): CustomerPass
     {
-        $this->bookings->assertOpen();
+        // Renewing an existing plan doesn't depend on whether new bookings are taken on this site.
+        if (! $renewalOf) {
+            $this->bookings->assertOpen();
+        }
         abort_unless($plan->is_active, 422, 'This pass is not available right now.');
         $plan->loadMissing('spaceTypes');
 
-        return DB::transaction(function () use ($customer, $plan) {
+        return DB::transaction(function () use ($customer, $plan, $renewalOf) {
             $pass = CustomerPass::create([
                 'user_id' => $customer->id,
                 'pass_plan_id' => $plan->id,
@@ -40,9 +43,11 @@ class PlanService
                 'location_id' => $plan->location_id,
                 'space_type_ids' => $plan->spaceTypes->pluck('id')->all(),
                 'status' => CustomerPass::PENDING,
+                'renewal_of_id' => $renewalOf?->id,
+                'auto_renew' => $renewalOf->auto_renew ?? false,
             ]);
 
-            $invoice = $this->invoices->create($customer, [['description' => "{$plan->name} pass (".$plan->allowanceLabel().')', 'quantity' => 1, 'unit_amount' => $plan->price]], now()->toDateString(), 'Flexible pass', null, notify: false);
+            $invoice = $this->invoices->create($customer, [['description' => "{$plan->name} pass (".$plan->allowanceLabel().')'.($renewalOf ? ' renewal' : ''), 'quantity' => 1, 'unit_amount' => $plan->price]], $this->dueDate($renewalOf), $renewalOf ? 'Pass renewal' : 'Flexible pass', null, notify: false);
             $invoice->source()->associate($pass)->save();
             $pass->update(['invoice_id' => $invoice->id]);
 
@@ -50,12 +55,14 @@ class PlanService
         });
     }
 
-    public function buyMembership(User $customer, MembershipPlan $plan): CustomerMembership
+    public function buyMembership(User $customer, MembershipPlan $plan, ?CustomerMembership $renewalOf = null): CustomerMembership
     {
-        $this->bookings->assertOpen();
+        if (! $renewalOf) {
+            $this->bookings->assertOpen();
+        }
         abort_unless($plan->is_active, 422, 'This membership is not available right now.');
 
-        return DB::transaction(function () use ($customer, $plan) {
+        return DB::transaction(function () use ($customer, $plan, $renewalOf) {
             $membership = CustomerMembership::create([
                 'user_id' => $customer->id,
                 'membership_plan_id' => $plan->id,
@@ -63,9 +70,11 @@ class PlanService
                 'discount_percent' => $plan->booking_discount_percent,
                 'billing_period' => $plan->billing_period,
                 'status' => CustomerMembership::PENDING,
+                'renewal_of_id' => $renewalOf?->id,
+                'auto_renew' => $renewalOf->auto_renew ?? false,
             ]);
 
-            $invoice = $this->invoices->create($customer, [['description' => "{$plan->name} membership (1 {$plan->billing_period})", 'quantity' => 1, 'unit_amount' => $plan->price]], now()->toDateString(), 'Membership', null, notify: false);
+            $invoice = $this->invoices->create($customer, [['description' => "{$plan->name} membership (1 {$plan->billing_period})".($renewalOf ? ' renewal' : ''), 'quantity' => 1, 'unit_amount' => $plan->price]], $this->dueDate($renewalOf), $renewalOf ? 'Membership renewal' : 'Membership', null, notify: false);
             $invoice->source()->associate($membership)->save();
             $membership->update(['invoice_id' => $invoice->id]);
 
@@ -74,7 +83,16 @@ class PlanService
     }
 
     /**
-     * Paid: the period starts now.
+     * A renewal is due when the current period ends; a new purchase is due today.
+     */
+    private function dueDate(CustomerPass|CustomerMembership|null $renewalOf): string
+    {
+        return ($renewalOf?->ends_at && $renewalOf->ends_at->isFuture() ? $renewalOf->ends_at : now())
+            ->timezone((string) config('app.display_timezone'))->toDateString();
+    }
+
+    /**
+     * Paid: the period starts now, or for a renewal paid early, when the current period ends.
      */
     public function activate(CustomerPass|CustomerMembership $plan): void
     {
@@ -82,14 +100,11 @@ class PlanService
             return;
         }
 
-        $startsAt = now();
-        $endsAt = match ($plan instanceof CustomerPass ? $plan->period : $plan->billing_period) {
-            'week' => $startsAt->copy()->addWeek(),
-            'quarter' => $startsAt->copy()->addMonthsNoOverflow(3),
-            'year' => $startsAt->copy()->addYearNoOverflow(),
-            default => $startsAt->copy()->addMonthNoOverflow(),
-        };
-        $plan->update(['status' => CustomerPass::ACTIVE, 'starts_at' => $startsAt, 'ends_at' => $endsAt]);
+        $plan->loadMissing('renewalOf');
+        $previousEnd = $plan->renewalOf?->ends_at;
+        $startsAt = $previousEnd && $previousEnd->isFuture() ? $previousEnd->copy() : now();
+        $endsAt = $plan->periodEndFrom($startsAt);
+        $plan->update(['status' => CustomerPass::ACTIVE, 'starts_at' => $startsAt, 'ends_at' => $endsAt, 'renewal_failure' => null]);
         if ($plan instanceof CustomerMembership) {
             // Virtual office plans open (or extend) the member's mailbox.
             $this->mailboxes->openForMembership($plan);

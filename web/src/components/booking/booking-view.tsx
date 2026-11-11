@@ -4,6 +4,7 @@ import Link from "next/link";
 import { CalendarCheck, CalendarX, CircleCheck, Clock, Hourglass, Landmark, MapPin, Ticket, Users } from "lucide-react";
 import { PayPanel } from "@/components/billing/pay-panel";
 import { HoldCountdown } from "@/components/booking/hold-countdown";
+import { BookingTracker } from "@/components/booking/booking-tracker";
 import { CancelBooking } from "@/components/booking/cancel-booking";
 import { Stepper } from "@/components/booking/stepper";
 import { ButtonLink } from "@/components/ui/button";
@@ -43,6 +44,9 @@ export async function BookingView({ reference, token, paid, inDashboard = false 
   return (
     <div className={`space-y-6 ${inDashboard ? "max-w-3xl" : "mx-auto max-w-3xl"}`}>
       {stepperAt === 3 && <Stepper current={stepperAt} />}
+
+      {/* Countdown to the start, then live time left, then "book again". */}
+      <BookingTracker booking={booking} bookHref={`${inDashboard ? "/dashboard/workspace/book" : "/book"}/${booking.space?.slug ?? ""}`} />
 
       {/* One ticket: what happened, what was booked, and the code to show at the desk. */}
       <article className="overflow-hidden rounded-2xl border border-border bg-surface shadow-card">

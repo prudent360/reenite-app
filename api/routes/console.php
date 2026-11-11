@@ -4,8 +4,10 @@ use App\Appointments\AppointmentService;
 use App\Compliance\ComplianceCalendar;
 use App\Consultations\ConsultationService;
 use App\Models\ActivityLog;
+use App\Payments\PaymentReminders;
 use App\Workspace\BookingService;
 use App\Workspace\PlanService;
+use App\Workspace\RenewalService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -51,6 +53,16 @@ Artisan::command('consultations:remind', function (ConsultationService $consulta
     $this->info($consultations->sendReminders().' consultation reminders sent.');
 })->purpose('Email customers the day before their consultation');
 
+Artisan::command('plans:renew', function (RenewalService $renewals) {
+    $result = $renewals->run();
+    $this->info("{$result['notices']} renewal notices, {$result['charged']} renewed, {$result['failed']} failed, {$result['abandoned']} unpaid renewals cancelled.");
+})->purpose('Renewal notices, automatic card renewals and clean-up of unpaid renewals');
+
+Artisan::command('billing:remind', function (PaymentReminders $reminders) {
+    $result = $reminders->run();
+    $this->info("{$result['invoices']} invoice reminders and {$result['nudges']} checkout nudges sent.");
+})->purpose('Remind customers about unpaid invoices and unfinished checkouts');
+
 Schedule::command('bookings:expire-holds')->everyMinute()->withoutOverlapping()->onOneServer();
 Schedule::command('bookings:complete')->everyFifteenMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command('bookings:remind')->hourly()->withoutOverlapping()->onOneServer();
@@ -58,6 +70,8 @@ Schedule::command('consultations:expire-holds')->everyMinute()->withoutOverlappi
 Schedule::command('consultations:remind')->hourly()->withoutOverlapping()->onOneServer();
 // Appointment reminders: the day before and about an hour before, so checked often.
 Schedule::command('appointments:remind')->everyFiveMinutes()->withoutOverlapping()->onOneServer();
+Schedule::command('plans:renew')->hourly()->withoutOverlapping()->onOneServer();
+Schedule::command('billing:remind')->dailyAt('09:00')->timezone('Africa/Lagos')->withoutOverlapping()->onOneServer();
 Schedule::command('plans:expire')->hourly()->withoutOverlapping()->onOneServer();
 
 // Compliance: roll the calendar forward overnight, then remind at 8am Lagos time.
