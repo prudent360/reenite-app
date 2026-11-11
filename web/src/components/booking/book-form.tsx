@@ -18,6 +18,12 @@ const maxQuantity: Record<RateUnit, number> = { hour: 12, day: 14, week: 8, mont
 const unitLabel: Record<RateUnit, string> = { hour: "hour", day: "day", week: "week", month: "month" };
 
 /** Fields that belong to the Time step; an error on one sends the customer back there. */
+/** "13:30" -> 810 */
+const clockMinutes = (time: string) => {
+  const [hours = 0, minutes = 0] = time.split(":").map(Number);
+  return hours * 60 + minutes;
+};
+
 const TIME_FIELDS = ["date", "start_time", "rate_unit", "quantity", "seats", "seat_ids", "addons"];
 
 /**
@@ -68,11 +74,8 @@ export function BookForm({
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Free start times for the chosen day (hourly bookings only).
+  // Free start times for the chosen day (for longer bookings, the first day).
   useEffect(() => {
-    if (unit !== "hour") {
-      return;
-    }
     startDay(async () => {
       const result = await getAvailability(space.slug, date, seats);
       setDay(result.ok ? (result.data ?? null) : null);
@@ -80,11 +83,18 @@ export function BookForm({
   }, [unit, date, seats, space.slug]);
 
   const hourly = unit === "hour";
-  const shownDay = hourly ? day : null;
-  const starts = useMemo(() => (shownDay?.starts ?? []).filter((start) => start.max_minutes >= quantity * 60), [shownDay, quantity]);
+  const shownDay = day;
+  // Hourly: long enough for the hours chosen. Daily and longer: free from then until closing on the first day.
+  const starts = useMemo(() => {
+    const all = shownDay?.starts ?? [];
+    if (hourly) return all.filter((start) => start.max_minutes >= quantity * 60);
+    const closes = shownDay?.closes ? clockMinutes(shownDay.closes) : null;
+    return closes === null ? [] : all.filter((start) => clockMinutes(start.time) + start.max_minutes >= closes);
+  }, [shownDay, quantity, hourly]);
   // A time picked earlier stops counting once it no longer fits the duration or the day.
-  const chosenStart = startTime && starts.some((start) => start.time === startTime) ? startTime : null;
-  const needsStart = hourly && !chosenStart;
+  // Daily and longer bookings start at the earliest free time until the customer picks another.
+  const chosenStart = startTime && starts.some((start) => start.time === startTime) ? startTime : hourly ? null : (starts[0]?.time ?? null);
+  const needsStart = !chosenStart;
 
   // The seat map for the chosen time, once the time is complete.
   useEffect(() => {
@@ -92,10 +102,10 @@ export function BookForm({
       return;
     }
     startSeats(async () => {
-      const result = await getSeatMap(space.slug, { date, start_time: hourly ? chosenStart : null, rate_unit: unit, quantity });
+      const result = await getSeatMap(space.slug, { date, start_time: chosenStart, rate_unit: unit, quantity });
       setSeatMap(result.ok ? (result.data ?? null) : null);
     });
-  }, [shared, needsStart, space.slug, date, hourly, chosenStart, unit, quantity]);
+  }, [shared, needsStart, space.slug, date, chosenStart, unit, quantity]);
 
   const shownSeatMap = shared && !needsStart ? seatMap : null;
   const hasSeats = (shownSeatMap?.seats.length ?? 0) > 0;
@@ -111,7 +121,7 @@ export function BookForm({
     () => ({
       space: space.slug,
       date,
-      start_time: hourly ? chosenStart : null,
+      start_time: chosenStart,
       rate_unit: unit,
       quantity,
       seats,
@@ -119,7 +129,7 @@ export function BookForm({
       addons: Object.entries(addons).filter(([, count]) => count > 0).map(([id, count]) => ({ id: Number(id), quantity: count })),
       use_pass: usePass,
     }),
-    [space.slug, date, unit, hourly, chosenStart, quantity, seats, choosing, seatsMissing, validPicks, addons, usePass],
+    [space.slug, date, unit, chosenStart, quantity, seats, choosing, seatsMissing, validPicks, addons, usePass],
   );
 
   // Live price whenever the booking changes and is complete enough to price.
@@ -337,42 +347,50 @@ export function BookForm({
           </div>
         </Card>
 
-        {hourly && (
-          <Card>
-            <CardHeader
-              title="Start time"
-              description={shownDay && !shownDay.closed && shownDay.opens && shownDay.closes ? `Open ${formatClock(shownDay.opens)} to ${formatClock(shownDay.closes)}.` : undefined}
-            />
-            <div className="p-5 sm:p-6">
-              {loadingDay ? (
-                <DotLoader label="Checking free times" />
-              ) : shownDay?.closed ? (
-                <p className="text-sm text-muted">{shownDay.reason ?? "Closed that day."} Please choose another date.</p>
-              ) : starts.length === 0 ? (
-                <p className="text-sm text-muted">No free {formatMinutes(quantity * 60)} slots that day. Try a shorter booking or another date.</p>
-              ) : (
-                <div className="grid grid-cols-3 gap-2 sm:grid-cols-4" role="radiogroup" aria-label="Start time">
-                  {starts.map((start) => (
-                    <button
-                      key={start.time}
-                      type="button"
-                      role="radio"
-                      aria-checked={chosenStart === start.time}
-                      onClick={() => setStartTime(start.time)}
-                      className={cn(
-                        "rounded-xl border px-3 py-2.5 text-sm font-semibold tabular-nums transition",
-                        chosenStart === start.time ? "border-brand-500 bg-brand-500 text-white" : "border-border bg-surface text-foreground hover:border-brand-500",
-                      )}
-                    >
-                      {formatClock(start.time)}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {fieldError("start_time") && <p className="mt-3 text-[13px] text-danger">{fieldError("start_time")}</p>}
-            </div>
-          </Card>
-        )}
+        <Card>
+          <CardHeader
+            title={hourly ? "Start time" : "Arrival time"}
+            description={
+              shownDay && !shownDay.closed && shownDay.opens && shownDay.closes
+                ? hourly
+                  ? `Open ${formatClock(shownDay.opens)} to ${formatClock(shownDay.closes)}.`
+                  : unit === "day"
+                    ? `When you'll arrive on the first day. Open ${formatClock(shownDay.opens)} to ${formatClock(shownDay.closes)}; your last day ends at closing.`
+                    : `When you'll arrive on the first day. It runs to the same time ${quantity} ${unitLabel[unit]}${quantity === 1 ? "" : "s"} later.`
+                : undefined
+            }
+          />
+          <div className="p-5 sm:p-6">
+            {loadingDay ? (
+              <DotLoader label="Checking free times" />
+            ) : shownDay?.closed ? (
+              <p className="text-sm text-muted">{shownDay.reason ?? "Closed that day."} Please choose another date.</p>
+            ) : starts.length === 0 ? (
+              <p className="text-sm text-muted">
+                {hourly ? `No free ${formatMinutes(quantity * 60)} slots that day. Try a shorter booking or another date.` : "It isn't free for the rest of that day. Please choose another start date."}
+              </p>
+            ) : (
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4" role="radiogroup" aria-label="Start time">
+                {starts.map((start) => (
+                  <button
+                    key={start.time}
+                    type="button"
+                    role="radio"
+                    aria-checked={chosenStart === start.time}
+                    onClick={() => setStartTime(start.time)}
+                    className={cn(
+                      "rounded-xl border px-3 py-2.5 text-sm font-semibold tabular-nums transition",
+                      chosenStart === start.time ? "border-brand-500 bg-brand-500 text-white" : "border-border bg-surface text-foreground hover:border-brand-500",
+                    )}
+                  >
+                    {formatClock(start.time)}
+                  </button>
+                ))}
+              </div>
+            )}
+            {fieldError("start_time") && <p className="mt-3 text-[13px] text-danger">{fieldError("start_time")}</p>}
+          </div>
+        </Card>
 
         {shared && (loadingSeats || hasSeats) && seatPicker()}
 

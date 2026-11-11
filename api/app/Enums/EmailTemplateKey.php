@@ -38,17 +38,23 @@ enum EmailTemplateKey: string
     case ConsultationConfirmed = 'consultation_confirmed';
     case ConsultationReminder = 'consultation_reminder';
     case ConsultationCancelled = 'consultation_cancelled';
+    case AppointmentScheduled = 'appointment_scheduled';
+    case AppointmentReminder = 'appointment_reminder';
+    case AppointmentStartingSoon = 'appointment_starting_soon';
+    case AppointmentChanged = 'appointment_changed';
+    case AppointmentCancelled = 'appointment_cancelled';
     case DocumentToSign = 'document_to_sign';
     case StaffOrderAssigned = 'staff_order_assigned';
     case StaffTransferToReview = 'staff_transfer_to_review';
     case StaffNewBooking = 'staff_new_booking';
     case StaffMailRequest = 'staff_mail_request';
     case StaffNewConsultation = 'staff_new_consultation';
+    case StaffAppointmentReschedule = 'staff_appointment_reschedule';
 
     /**
      * Groups in the order the editor lists them.
      */
-    public const GROUPS = ['Account', 'Billing', 'Orders', 'Bookings', 'Passes and memberships', 'Virtual office', 'Compliance', 'Consultations', 'Documents', 'Staff alerts'];
+    public const GROUPS = ['Account', 'Billing', 'Orders', 'Bookings', 'Passes and memberships', 'Virtual office', 'Compliance', 'Consultations', 'Appointments', 'Documents', 'Staff alerts'];
 
     public function group(): string
     {
@@ -62,7 +68,9 @@ enum EmailTemplateKey: string
             self::MailReceived, self::MailScanned => 'Virtual office',
             self::ComplianceDueSoon, self::ComplianceOverdue => 'Compliance',
             self::ConsultationConfirmed, self::ConsultationReminder, self::ConsultationCancelled => 'Consultations',
-            self::StaffOrderAssigned, self::StaffTransferToReview, self::StaffNewBooking, self::StaffMailRequest, self::StaffNewConsultation => 'Staff alerts',
+            self::AppointmentScheduled, self::AppointmentReminder, self::AppointmentStartingSoon, self::AppointmentChanged, self::AppointmentCancelled => 'Appointments',
+            self::StaffOrderAssigned, self::StaffTransferToReview, self::StaffNewBooking, self::StaffMailRequest, self::StaffNewConsultation,
+            self::StaffAppointmentReschedule => 'Staff alerts',
             self::DocumentToSign => 'Documents',
         };
     }
@@ -105,6 +113,12 @@ enum EmailTemplateKey: string
             self::ConsultationReminder => 'Consultation reminder',
             self::ConsultationCancelled => 'Consultation cancelled',
             self::StaffNewConsultation => 'New consultation booked',
+            self::AppointmentScheduled => 'Appointment booked',
+            self::AppointmentReminder => 'Appointment reminder (day before)',
+            self::AppointmentStartingSoon => 'Appointment reminder (1 hour before)',
+            self::AppointmentChanged => 'Appointment time changed',
+            self::AppointmentCancelled => 'Appointment cancelled',
+            self::StaffAppointmentReschedule => 'Client asked to reschedule',
             self::StaffMailRequest => 'Mail request from a customer',
         };
     }
@@ -147,6 +161,12 @@ enum EmailTemplateKey: string
             self::ConsultationReminder => 'Sent the day before a consultation.',
             self::ConsultationCancelled => 'Sent when the customer or staff cancel a consultation.',
             self::StaffNewConsultation => 'Sent to staff who manage consultations when one is confirmed.',
+            self::AppointmentScheduled => 'Sent when staff book an appointment with a client, with a link to confirm or ask to reschedule.',
+            self::AppointmentReminder => 'Sent the day before an appointment (if it was booked more than a day ahead).',
+            self::AppointmentStartingSoon => 'Sent about an hour before an appointment starts.',
+            self::AppointmentChanged => 'Sent when staff move an appointment to a new time.',
+            self::AppointmentCancelled => 'Sent when staff cancel an appointment.',
+            self::StaffAppointmentReschedule => 'Tells the staff member running an appointment that the client asked to reschedule.',
             self::StaffMailRequest => 'Tells the front desk a customer wants mail collected, forwarded, scanned or shredded.',
         };
     }
@@ -172,6 +192,7 @@ enum EmailTemplateKey: string
             self::MailReceived => ['first_name', 'mail_kind', 'sender', 'mailbox_number'],
             self::ComplianceDueSoon, self::ComplianceOverdue => ['first_name', 'deadline', 'business_name', 'due_date'],
             self::ConsultationConfirmed, self::ConsultationReminder => ['first_name', 'consultation_name', 'consultation_date', 'consultation_time'],
+            self::AppointmentScheduled, self::AppointmentReminder, self::AppointmentStartingSoon, self::AppointmentChanged => ['first_name', 'appointment_title', 'appointment_date', 'appointment_time'],
             default => null,
         };
     }
@@ -194,6 +215,12 @@ enum EmailTemplateKey: string
 
         $compliance = ['business_name' => 'Business', 'deadline' => 'What is due, e.g. File VAT return', 'period' => 'Period it covers, e.g. October 2026', 'due_date' => 'Due date', 'days_left' => 'e.g. "in 3 days" or "2 days ago"', 'authority' => 'Who it is filed with'];
         $consultation = ['consultation_reference' => 'Consultation number', 'consultation_name' => 'Type of consultation', 'consultation_date' => 'Date', 'consultation_time' => 'Start and end time', 'consultation_mode' => 'In person, video call or phone call', 'meeting_details' => 'Where or how to join', 'topic' => 'What they want to discuss'];
+
+        $appointment = [
+            'appointment_reference' => 'Appointment number', 'appointment_title' => 'What the appointment is for', 'appointment_date' => 'Date',
+            'appointment_time' => 'Start and end time', 'appointment_mode' => 'In person, phone call or video call', 'meeting_details' => 'Where or how to join',
+            'staff_name' => 'Who they are meeting', 'punctuality' => 'Your timekeeping rule, from the appointment settings',
+        ];
 
         $mail = ['mailbox_number' => 'Mailbox number, e.g. RN-0012', 'business_name' => 'Name on the mailbox', 'mail_kind' => 'Letter, parcel or official letter', 'sender' => 'Who sent it', 'received_date' => 'Date it arrived'];
 
@@ -229,6 +256,9 @@ enum EmailTemplateKey: string
             self::ConsultationConfirmed, self::ConsultationReminder => $common + $consultation,
             self::ConsultationCancelled => $common + $consultation + ['refund_amount' => 'Refund due (or "No refund")', 'reason' => 'Why it was cancelled'],
             self::StaffNewConsultation => $common + $consultation + ['customer_name' => 'Customer', 'amount' => 'Amount paid'],
+            self::AppointmentScheduled, self::AppointmentReminder, self::AppointmentStartingSoon, self::AppointmentChanged => $common + $appointment,
+            self::AppointmentCancelled => $common + $appointment + ['reason' => 'Why it was cancelled'],
+            self::StaffAppointmentReschedule => $common + $appointment + ['client_name' => 'Client', 'client_phone' => 'Client phone', 'note' => "The client's note"],
         };
     }
 
@@ -481,6 +511,48 @@ enum EmailTemplateKey: string
                 'heading' => 'Hi {{first_name}},',
                 'body' => "{{customer_name}} booked a {{consultation_name}} ({{consultation_reference}}).\n\nWhen: {{consultation_date}}, {{consultation_time}}\nHow: {{consultation_mode}}\nPaid: {{amount}}\nTopic: {{topic}}\n\nAssign an officer and, for video calls, add the meeting link.",
                 'button_text' => 'Open the consultation',
+                'footer' => null,
+            ],
+            self::AppointmentScheduled => [
+                'subject' => 'Your appointment: {{appointment_title}} on {{appointment_date}}',
+                'heading' => 'Hi {{first_name}},',
+                'body' => "We've booked an appointment with you.\n\nWhat: {{appointment_title}}\nWhen: {{appointment_date}}, {{appointment_time}}\nHow: {{appointment_mode}}\n{{meeting_details}}\nWith: {{staff_name}}\n\n{{punctuality}}\n\nPlease let us know you can make it, or ask for another time.",
+                'button_text' => 'Confirm or reschedule',
+                'footer' => 'Reference: {{appointment_reference}}',
+            ],
+            self::AppointmentReminder => [
+                'subject' => 'Tomorrow: {{appointment_title}} at {{appointment_time}}',
+                'heading' => 'See you tomorrow, {{first_name}}',
+                'body' => "A reminder about your appointment on {{appointment_date}}, {{appointment_time}}.\n\nWhat: {{appointment_title}}\nHow: {{appointment_mode}}\n{{meeting_details}}\n\n{{punctuality}}",
+                'button_text' => "Confirm I'll be there",
+                'footer' => "Can't make it? Use the button to ask for another time, so we can offer your slot to someone else.",
+            ],
+            self::AppointmentStartingSoon => [
+                'subject' => 'In an hour: {{appointment_title}} at {{appointment_time}}',
+                'heading' => 'Starting soon, {{first_name}}',
+                'body' => "Your appointment starts in about an hour: {{appointment_time}} today.\n\nHow: {{appointment_mode}}\n{{meeting_details}}\n\n{{punctuality}}",
+                'button_text' => 'View appointment',
+                'footer' => null,
+            ],
+            self::AppointmentChanged => [
+                'subject' => 'New time: {{appointment_title}} on {{appointment_date}}',
+                'heading' => 'Hi {{first_name}},',
+                'body' => "Your appointment has moved to a new time.\n\nWhat: {{appointment_title}}\nWhen: {{appointment_date}}, {{appointment_time}}\nHow: {{appointment_mode}}\n{{meeting_details}}\n\n{{punctuality}}\n\nPlease confirm the new time works for you.",
+                'button_text' => 'Confirm or reschedule',
+                'footer' => 'Reference: {{appointment_reference}}',
+            ],
+            self::AppointmentCancelled => [
+                'subject' => 'Cancelled: {{appointment_title}} on {{appointment_date}}',
+                'heading' => 'Hi {{first_name}},',
+                'body' => "Your appointment on {{appointment_date}}, {{appointment_time}} ({{appointment_title}}) has been cancelled.\n\nReason: {{reason}}\n\nWe'll be in touch to arrange another time if needed.",
+                'button_text' => null,
+                'footer' => 'Reference: {{appointment_reference}}',
+            ],
+            self::StaffAppointmentReschedule => [
+                'subject' => '{{client_name}} asked to reschedule {{appointment_reference}}',
+                'heading' => 'Hi {{first_name}},',
+                'body' => "{{client_name}} can't make {{appointment_title}} on {{appointment_date}}, {{appointment_time}} and asked for another time.\n\nTheir note: {{note}}\nPhone: {{client_phone}}\n\nPick a new time from the appointment page and they'll be told automatically.",
+                'button_text' => 'Open the appointment',
                 'footer' => null,
             ],
             self::StaffMailRequest => [

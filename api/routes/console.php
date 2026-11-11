@@ -1,5 +1,6 @@
 <?php
 
+use App\Appointments\AppointmentService;
 use App\Compliance\ComplianceCalendar;
 use App\Consultations\ConsultationService;
 use App\Models\ActivityLog;
@@ -41,6 +42,11 @@ Artisan::command('consultations:expire-holds', function (ConsultationService $co
     $this->info($consultations->expireHolds().' unpaid consultation holds released.');
 })->purpose('Release consultation times whose payment window has passed');
 
+Artisan::command('appointments:remind', function (AppointmentService $appointments) {
+    $sent = $appointments->sendReminders();
+    $this->info("{$sent['day']} day-before and {$sent['soon']} starting-soon appointment reminders sent.");
+})->purpose('Remind clients the day before and an hour before appointments staff booked');
+
 Artisan::command('consultations:remind', function (ConsultationService $consultations) {
     $this->info($consultations->sendReminders().' consultation reminders sent.');
 })->purpose('Email customers the day before their consultation');
@@ -50,6 +56,8 @@ Schedule::command('bookings:complete')->everyFifteenMinutes()->withoutOverlappin
 Schedule::command('bookings:remind')->hourly()->withoutOverlapping()->onOneServer();
 Schedule::command('consultations:expire-holds')->everyMinute()->withoutOverlapping()->onOneServer();
 Schedule::command('consultations:remind')->hourly()->withoutOverlapping()->onOneServer();
+// Appointment reminders: the day before and about an hour before, so checked often.
+Schedule::command('appointments:remind')->everyFiveMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command('plans:expire')->hourly()->withoutOverlapping()->onOneServer();
 
 // Compliance: roll the calendar forward overnight, then remind at 8am Lagos time.

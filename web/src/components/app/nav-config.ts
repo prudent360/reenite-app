@@ -132,6 +132,7 @@ export const adminNav: NavSection[] = [
       { href: "/admin/mail", label: "Mail", icon: Mailbox, permission: "mail.manage", keywords: "virtual office mailbox letters parcels scan forward collect" },
       { href: "/admin/compliance", label: "Compliance", icon: CalendarRange, permission: "compliance.manage", keywords: "deadlines overdue vat paye annual returns tcc customers businesses" },
       { href: "/admin/consultations", label: "Consultations", icon: CalendarClock, permission: "consultations.view_assigned", keywords: "advice sessions meetings officer video call" },
+      { href: "/admin/appointments", label: "Appointments", icon: CalendarCheck, permission: "appointments.manage", keywords: "meetings clients book schedule reminders late no-show punctuality calendar" },
     ],
   },
   {

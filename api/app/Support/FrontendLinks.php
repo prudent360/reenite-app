@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\Appointment;
 use App\Models\Booking;
 use App\Models\User;
 use Illuminate\Support\Facades\URL;
@@ -103,6 +104,20 @@ class FrontendLinks
     public static function adminConsultation(string $reference): string
     {
         return self::base().'/admin/consultations/'.$reference;
+    }
+
+    /**
+     * The client's private page for an appointment staff booked: confirm or ask to reschedule.
+     * The token lets clients without an account open it straight from a message.
+     */
+    public static function appointment(Appointment $appointment): string
+    {
+        return self::base().'/appointments/'.$appointment->reference.'?'.http_build_query(['token' => $appointment->response_token]);
+    }
+
+    public static function adminAppointment(string $reference): string
+    {
+        return self::base().'/admin/appointments/'.$reference;
     }
 
     public static function register(string $email): string

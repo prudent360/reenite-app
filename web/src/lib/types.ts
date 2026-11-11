@@ -864,3 +864,55 @@ export type WhatsAppSettings = {
   opted_in_customers: number;
   events: { key: string; name: string; group: string; template: string | null; parameters: { key: string; label: string }[] }[];
 };
+
+/* ---------- Appointments (staff book clients) ---------- */
+
+export type AppointmentStatus = "scheduled" | "attended" | "no_show" | "cancelled";
+
+export type AppointmentMode = "in_person" | "phone" | "video";
+
+/** How a client kept past appointments. */
+export type ClientHistory = { total: number; on_time: number; late: number; no_show: number; cancelled: number; average_minutes_late: number | null };
+
+export type Appointment = {
+  id: number;
+  reference: string;
+  title: string;
+  mode: AppointmentMode;
+  mode_label: string;
+  /** What the client sees: staff's own details, or the default for the mode. */
+  meeting_details: string;
+  /** What staff typed, if anything. */
+  custom_meeting_details: string | null;
+  starts_at: string;
+  ends_at: string;
+  duration_minutes: number;
+  status: AppointmentStatus;
+  status_label: string;
+  minutes_late: number | null;
+  response: "confirmed" | "reschedule_requested" | null;
+  response_note: string | null;
+  responded_at: string | null;
+  reminded_day_at: string | null;
+  reminded_hour_at: string | null;
+  staff_notes: string | null;
+  staff_name: string | null;
+  assigned_to: number | null;
+  created_by?: string | null;
+  cancelled_at: string | null;
+  cancel_reason: string | null;
+  can_respond: boolean;
+  client?: { id: number; name: string; email: string; phone: string | null; is_guest: boolean; whatsapp: boolean; whatsapp_live: boolean };
+  history?: ClientHistory;
+  created_at: string;
+};
+
+/** The client's own view, opened from the link in their messages. */
+export type ClientAppointment = Pick<
+  Appointment,
+  "reference" | "title" | "mode" | "mode_label" | "meeting_details" | "starts_at" | "ends_at" | "status" | "status_label" | "response" | "responded_at" | "staff_name" | "can_respond"
+> & { client_first_name?: string; punctuality: string };
+
+export type AppointmentClient = { id: number; name: string; email: string; phone: string | null; is_guest: boolean; history: ClientHistory };
+
+export type AppointmentSettings = { arrive_early_minutes: number; grace_minutes: number; message: string };

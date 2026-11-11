@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\Admin\ActivityLogController;
+use App\Http\Controllers\Api\V1\Admin\AppointmentController as AdminAppointmentController;
 use App\Http\Controllers\Api\V1\Admin\BookingController as AdminBookingController;
 use App\Http\Controllers\Api\V1\Admin\BundleController;
 use App\Http\Controllers\Api\V1\Admin\ComplianceController as AdminComplianceController;
@@ -37,6 +38,7 @@ use App\Http\Controllers\Api\V1\Admin\Workspace\SpaceController;
 use App\Http\Controllers\Api\V1\Admin\Workspace\SpaceSeatController;
 use App\Http\Controllers\Api\V1\Admin\Workspace\SpaceTypeController;
 use App\Http\Controllers\Api\V1\AgreementController;
+use App\Http\Controllers\Api\V1\AppointmentController;
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\Auth\EmailVerificationController;
 use App\Http\Controllers\Api\V1\Auth\PasswordResetController;
@@ -82,6 +84,10 @@ Route::prefix('v1')->name('v1.')->group(function () {
 
     Route::get('consultations/types', [ConsultationController::class, 'types'])->name('consultations.types');
     Route::get('consultations/types/{type}/slots', [ConsultationController::class, 'slots'])->middleware('throttle:60,1')->name('consultations.slots');
+
+    // Appointments staff booked: clients open them from the private link in their messages.
+    Route::get('appointments/{appointment}', [AppointmentController::class, 'show'])->middleware('throttle:30,1')->name('appointments.show');
+    Route::post('appointments/{appointment}/respond', [AppointmentController::class, 'respond'])->middleware('throttle:10,1')->name('appointments.respond');
 
     // The website asks for a link so the browser can send a file straight here (not via Vercel).
     Route::post('upload-grants', [UploadGrantController::class, 'store'])->middleware('throttle:30,1')->name('upload-grants.store');
@@ -269,6 +275,19 @@ Route::prefix('v1')->name('v1.')->group(function () {
                     Route::patch('{consultation}', [AdminConsultationController::class, 'update'])->name('update');
                     Route::post('{consultation}/outcome', [AdminConsultationController::class, 'outcome'])->name('outcome');
                 });
+            });
+
+            Route::prefix('appointments')->name('appointments.')->middleware('permission:appointments.manage')->group(function () {
+                Route::get('clients', [AdminAppointmentController::class, 'clients'])->name('clients');
+                Route::get('staff', [AdminAppointmentController::class, 'staff'])->name('staff');
+                Route::get('settings', [AdminAppointmentController::class, 'settings'])->name('settings.show');
+                Route::put('settings', [AdminAppointmentController::class, 'updateSettings'])->name('settings.update');
+                Route::get('/', [AdminAppointmentController::class, 'index'])->name('index');
+                Route::post('/', [AdminAppointmentController::class, 'store'])->name('store');
+                Route::get('{appointment}', [AdminAppointmentController::class, 'show'])->name('show');
+                Route::patch('{appointment}', [AdminAppointmentController::class, 'update'])->name('update');
+                Route::post('{appointment}/cancel', [AdminAppointmentController::class, 'cancel'])->name('cancel');
+                Route::post('{appointment}/outcome', [AdminAppointmentController::class, 'outcome'])->name('outcome');
             });
 
             Route::prefix('compliance')->name('compliance.')->middleware('permission:compliance.manage')->group(function () {

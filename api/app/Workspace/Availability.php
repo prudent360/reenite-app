@@ -49,7 +49,19 @@ class Availability
         if ($opening === null) {
             throw ValidationException::withMessages(['date' => "{$space->name} is closed on ".$day->format('l, j M').'.']);
         }
+        // Customers can arrive later than opening on the first day; it still ends at the same time.
         $startsAt = $this->at($day, $opening['opens']);
+        if ($startTime !== null) {
+            if (! preg_match('/^\d{2}:\d{2}$/', $startTime)) {
+                throw ValidationException::withMessages(['start_time' => 'Choose a start time.']);
+            }
+            [$hour, $minute] = array_map('intval', explode(':', $startTime));
+            $chosen = $day->setTime($hour, $minute);
+            if ($chosen->lessThan($startsAt) || $chosen->greaterThanOrEqualTo($this->at($day, $opening['closes']))) {
+                throw ValidationException::withMessages(['start_time' => 'On '.$day->format('l').'s, '.$space->name.' is open '.$this->describeHours($opening).'.']);
+            }
+            $startsAt = $chosen;
+        }
 
         $endsAt = match ($rateUnit) {
             // The last day ends at that day's closing time.

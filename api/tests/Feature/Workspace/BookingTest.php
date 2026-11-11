@@ -231,6 +231,24 @@ class BookingTest extends TestCase
         $this->assertSame(1_200_000, $booking->chargedAmount());
     }
 
+    public function test_daily_bookings_can_start_later_than_opening_and_still_end_at_closing(): void
+    {
+        $this->travelTo('2026-11-02 11:00:00'); // noon in Lagos: opening time has passed
+        $day = ['space' => 'meeting-room', 'date' => '2026-11-02', 'rate_unit' => 'day', 'quantity' => 1, 'seats' => 2];
+
+        $this->postJson('/api/v1/bookings/quote', $day)->assertJsonValidationErrors('start_time');
+        $this->postJson('/api/v1/bookings/quote', ['start_time' => '15:00'] + $day)
+            ->assertOk()
+            ->assertJsonPath('data.starts_at', '2026-11-02T14:00:00+00:00')
+            ->assertJsonPath('data.ends_at', '2026-11-02T19:00:00+00:00')
+            ->assertJsonPath('data.total', 2_500_000);
+        $this->postJson('/api/v1/bookings/quote', ['start_time' => '20:00'] + $day)->assertJsonValidationErrors('start_time');
+        $this->postJson('/api/v1/bookings/quote', ['date' => '2026-11-03', 'start_time' => '08:00'] + $day)->assertJsonValidationErrors('start_time');
+
+        $this->postJson('/api/v1/bookings', ['start_time' => '15:00'] + $day + $this->guest())->assertCreated();
+        $this->assertSame('2026-11-02 14:00:00', Booking::sole()->starts_at->toDateTimeString());
+    }
+
     public function test_a_full_discount_code_confirms_the_booking_without_payment(): void
     {
         Notification::fake();

@@ -41,10 +41,10 @@ enum Role: string
                 'services.manage', 'orders.view_all', 'orders.manage', 'orders.assign',
                 'workspace.manage', 'bookings.manage', 'customers.view', 'customers.manage',
                 'invoices.manage', 'payments.view', 'reports.view', 'content.manage', 'documents.manage',
-                'coupons.manage', 'mail.manage', 'compliance.manage', 'consultations.manage',
+                'coupons.manage', 'mail.manage', 'compliance.manage', 'consultations.manage', 'appointments.manage',
             ],
-            self::FilingOfficer => ['orders.view_assigned', 'customers.view', 'compliance.manage', 'consultations.view_assigned'],
-            self::FrontDesk => ['bookings.manage', 'bookings.checkin', 'customers.view', 'mail.manage'],
+            self::FilingOfficer => ['orders.view_assigned', 'customers.view', 'compliance.manage', 'consultations.view_assigned', 'appointments.manage'],
+            self::FrontDesk => ['bookings.manage', 'bookings.checkin', 'customers.view', 'mail.manage', 'appointments.manage'],
             self::Finance => [
                 'payments.view', 'payments.verify', 'refunds.process', 'invoices.manage', 'reports.view', 'customers.view',
                 'coupons.manage',
@@ -63,7 +63,7 @@ enum Role: string
             'orders.view_all', 'orders.view_assigned', 'orders.manage', 'orders.assign',
             'workspace.manage', 'bookings.manage', 'bookings.checkin',
             'payments.view', 'payments.verify', 'refunds.process', 'invoices.manage', 'coupons.manage',
-            'mail.manage', 'compliance.manage', 'consultations.manage', 'consultations.view_assigned', 'customers.view', 'customers.manage',
+            'mail.manage', 'compliance.manage', 'consultations.manage', 'consultations.view_assigned', 'appointments.manage', 'customers.view', 'customers.manage',
             'reports.view', 'documents.manage', 'audit.view',
         ];
     }
