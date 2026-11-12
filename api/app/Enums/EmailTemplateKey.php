@@ -81,6 +81,15 @@ enum EmailTemplateKey: string
         };
     }
 
+    /**
+     * Whether the event also appears under the bell in the app.
+     * Sign-in links (verify, reset, invites) only make sense in an inbox.
+     */
+    public function showsInApp(): bool
+    {
+        return ! in_array($this, [self::EmailVerification, self::PasswordReset, self::StaffInvite, self::GuestAccountInvite], true);
+    }
+
     public function name(): string
     {
         return match ($this) {

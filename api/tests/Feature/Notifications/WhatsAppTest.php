@@ -114,7 +114,7 @@ class WhatsAppTest extends TestCase
         $notification = new ComplianceNotification(EmailTemplateKey::ComplianceDueSoon, $this->dueItem($customer));
 
         // The mail channel runs first, so a WhatsApp error must stay inside its own channel.
-        $this->assertSame(['mail', WhatsAppChannel::class], $notification->via($customer));
+        $this->assertSame(['database', 'mail', WhatsAppChannel::class], $notification->via($customer));
         app(WhatsAppChannel::class)->send($customer, $notification);
 
         Http::assertSentCount(1);

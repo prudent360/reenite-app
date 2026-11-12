@@ -6,6 +6,7 @@ use App\Enums\EmailTemplateKey;
 use App\Models\EmailTemplate;
 use App\Models\User;
 use App\Notifications\Channels\WhatsAppChannel;
+use App\Support\FrontendLinks;
 use App\Support\WhatsApp;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -38,6 +39,8 @@ abstract class TemplatedNotification extends Notification
     public function via(object $notifiable): array
     {
         return array_values(array_filter([
+            // Saved first, so a mail or WhatsApp failure never loses the in-app copy.
+            $notifiable instanceof User && $this->template()->showsInApp() ? 'database' : null,
             EmailTemplate::for($this->template())->is_enabled ? 'mail' : null,
             app(WhatsApp::class)->shouldSend($this->template(), $notifiable) ? WhatsAppChannel::class : null,
         ]));
@@ -61,6 +64,27 @@ abstract class TemplatedNotification extends Notification
             $this->variables($notifiable) + self::nameVariables($notifiable->name),
             $this->actionUrl($notifiable),
         );
+    }
+
+    /**
+     * The copy kept for the bell: the event's name as the title, the email subject as the line under it,
+     * and the email button's address as a path on the website, so it opens in the same tab.
+     *
+     * @return array{event: string, group: string, title: string, body: string, url: ?string}
+     */
+    public function toDatabase(User $notifiable): array
+    {
+        $variables = $this->variables($notifiable) + self::nameVariables($notifiable->name) + ['app_name' => (string) config('app.name')];
+        $url = $this->actionUrl($notifiable);
+        $base = FrontendLinks::base();
+
+        return [
+            'event' => $this->template()->value,
+            'group' => $this->template()->group(),
+            'title' => $this->template()->name(),
+            'body' => Str::squish((string) EmailTemplate::interpolate(EmailTemplate::for($this->template())->subject, $variables)),
+            'url' => $url !== null && str_starts_with($url, $base.'/') ? Str::after($url, $base) : $url,
+        ];
     }
 
     /**

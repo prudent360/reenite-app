@@ -987,3 +987,17 @@ export type BlogPost = {
 };
 
 export type BlogIndex = Paginated<BlogPost> & { categories: string[] };
+
+export type AppNotification = {
+  id: string;
+  event: string | null;
+  group: string | null;
+  title: string;
+  body: string;
+  /** A path on this site (or a full address), or null when there's nothing to open. */
+  url: string | null;
+  read: boolean;
+  created_at: string | null;
+};
+
+export type NotificationFeed = { data: AppNotification[]; unread_count: number };

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense, createContext, use, useState, useSyncExternalStore, type MouseEvent, type ReactNode } from "react";
-import { Bell, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, LifeBuoy, Menu, MoreHorizontal, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ExternalLink, LifeBuoy, Menu, MoreHorizontal, X } from "lucide-react";
 import { Logo, LogoMark } from "@/components/brand/logo";
 import { cn } from "@/lib/utils";
 import { adminNav, customerNav, filterNav, type NavItem } from "./nav-config";
@@ -45,6 +45,7 @@ export function AppShell({
   area,
   nav,
   search,
+  bell,
   userMenu,
   children,
 }: {
@@ -53,6 +54,8 @@ export function AppShell({
   nav: ReactNode;
   /** The "Search or jump to" trigger and command palette. */
   search: ReactNode;
+  /** The notifications bell and its menu. */
+  bell: ReactNode;
   userMenu: ReactNode;
   children: ReactNode;
 }) {
@@ -166,13 +169,7 @@ export function AppShell({
               <Menu className="size-5" />
             </button>
             <div className="min-w-0 flex-1">{search}</div>
-            <button
-              type="button"
-              className="relative flex size-10 shrink-0 items-center justify-center rounded-full text-muted hover:bg-surface-muted hover:text-foreground"
-              aria-label="Notifications"
-            >
-              <Bell className="size-5" />
-            </button>
+            {bell}
             <span className="hidden h-8 w-px bg-border sm:block" aria-hidden />
             {userMenu}
           </header>

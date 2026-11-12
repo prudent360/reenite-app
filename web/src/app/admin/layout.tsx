@@ -3,7 +3,9 @@ import { Suspense } from "react";
 import { AppShell, SidebarNav, SidebarNavSkeleton } from "@/components/app/app-shell";
 import { CommandPalette, CommandPaletteSkeleton } from "@/components/app/command-palette";
 import { allowedAdminHrefs } from "@/components/app/nav-config";
+import { NotificationMenu, NotificationMenuSkeleton } from "@/components/app/notification-menu";
 import { UserMenu, UserMenuSkeleton } from "@/components/app/user-menu";
+import { loadNotifications } from "@/lib/actions/notifications";
 import { requireStaff } from "@/lib/session";
 
 export const metadata: Metadata = {
@@ -23,6 +25,11 @@ export default function AdminLayout({ children }: LayoutProps<"/admin">) {
       search={
         <Suspense fallback={<CommandPaletteSkeleton />}>
           <AdminSearch />
+        </Suspense>
+      }
+      bell={
+        <Suspense fallback={<NotificationMenuSkeleton />}>
+          <Notifications />
         </Suspense>
       }
       userMenu={
@@ -54,4 +61,9 @@ async function StaffUserMenu() {
       settingsHref="/admin/profile"
     />
   );
+}
+
+async function Notifications() {
+  await requireStaff();
+  return <NotificationMenu initial={await loadNotifications()} />;
 }

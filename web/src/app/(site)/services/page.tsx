@@ -32,7 +32,7 @@ export default async function ServicesPage() {
         eyebrow="Services and prices"
         title="Everything your business needs to be official and visible"
         body="Our legal experts handle every registration and tax filing for you. Every price below includes government fees, and we show them separately before you pay."
-        image={{ src: "/images/home/consultant-window.jpg", alt: "A Reenite legal expert reviewing a customer's documents" }}
+        image={{ src: "/images/services-hero.jpg", alt: "A smiling Reenite team member working on a laptop in the Reenite workspace" }}
       >
         {categories.length > 0 && (
           <nav aria-label="Service categories" className="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-sm font-medium">

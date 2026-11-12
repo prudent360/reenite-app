@@ -54,6 +54,7 @@ use App\Http\Controllers\Api\V1\ComplianceController;
 use App\Http\Controllers\Api\V1\ConsultationController;
 use App\Http\Controllers\Api\V1\MailboxController;
 use App\Http\Controllers\Api\V1\MetaController;
+use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\PlanController;
 use App\Http\Controllers\Api\V1\ProfileController;
@@ -125,6 +126,12 @@ Route::prefix('v1')->name('v1.')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         Route::put('profile', [ProfileController::class, 'update'])->name('profile.update');
         Route::put('profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
+
+        Route::prefix('notifications')->name('notifications.')->group(function () {
+            Route::get('/', [NotificationController::class, 'index'])->name('index');
+            Route::post('read', [NotificationController::class, 'readAll'])->name('read-all');
+            Route::post('{notification}/read', [NotificationController::class, 'read'])->whereUuid('notification')->name('read');
+        });
 
         Route::get('orders', [OrderController::class, 'index'])->name('orders.index');
         Route::post('orders', [OrderController::class, 'store'])->middleware('throttle:10,1')->name('orders.store');
