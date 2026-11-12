@@ -95,7 +95,7 @@ export function BookingTracker({ booking, bookHref }: { booking: Booking; bookHr
 
   const phase = phaseOf(booking, now);
   return (
-    <section aria-label="Booking tracker" className="overflow-hidden rounded-2xl border border-border bg-surface shadow-card">
+    <section aria-label="Booking tracker" className="overflow-hidden rounded-2xl border border-border bg-surface">
       {phase === "upcoming" && <Upcoming booking={booking} now={now} />}
       {phase === "live" && <Live booking={booking} now={now} bookHref={bookHref} />}
       {phase === "ended" && <Ended booking={booking} now={now} bookHref={bookHref} />}

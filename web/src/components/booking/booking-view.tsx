@@ -42,14 +42,14 @@ export async function BookingView({ reference, token, paid, inDashboard = false 
   const showCancel = booking.can_cancel && booking.status !== "held";
 
   return (
-    <div className={`space-y-6 ${inDashboard ? "max-w-3xl" : "mx-auto max-w-3xl"}`}>
+    <div className="mx-auto max-w-3xl space-y-6">
       {stepperAt === 3 && <Stepper current={stepperAt} />}
 
       {/* Countdown to the start, then live time left, then "book again". */}
       <BookingTracker booking={booking} bookHref={`${inDashboard ? "/dashboard/workspace/book" : "/book"}/${booking.space?.slug ?? ""}`} />
 
       {/* One ticket: what happened, what was booked, and the code to show at the desk. */}
-      <article className="overflow-hidden rounded-2xl border border-border bg-surface shadow-card">
+      <article className="overflow-hidden rounded-2xl border border-border bg-surface">
         <header className="flex items-start gap-4 p-6 sm:p-8">
           <span className={`flex size-11 shrink-0 items-center justify-center rounded-full ${headline.tone}`}>
             <headline.icon className="size-5" />
