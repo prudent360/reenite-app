@@ -1,10 +1,11 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { ArrowUpRight, Clock, MapPin, MessageSquare, Phone } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { academy, hq, pillars, socials, spaceTypes } from "@/content/site";
 
 /** `booking` is where "Book a space" goes (this site or the booking site), set by the admin switch. */
-export function SiteFooter({ booking }: { booking: { href: string; external: boolean } }) {
+export function SiteFooter({ booking, account }: { booking: { href: string; external: boolean }; account: ReactNode }) {
   return (
     <footer className="bg-navy-950 text-navy-200 print:hidden">
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-3 lg:grid-cols-[1.4fr_1fr_1fr_1fr_1.2fr] lg:px-8">
@@ -78,7 +79,7 @@ export function SiteFooter({ booking }: { booking: { href: string; external: boo
               </a>
             </li>
             <li><Link href="/contact" className="hover:text-white">Contact</Link></li>
-            <li><Link href="/login" className="hover:text-white">Sign in</Link></li>
+            <li>{account}</li>
           </ul>
         </div>
 

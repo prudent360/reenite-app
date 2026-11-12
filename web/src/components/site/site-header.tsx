@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Suspense, useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import { Suspense, useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { ArrowUpRight, Building2, ChevronDown, GraduationCap, ListChecks, MapPinned, MessageCircle, Mic, type LucideIcon } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
-import { ButtonLink } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 type NavLink = { href: string; label: string; external?: boolean; description?: string; icon?: LucideIcon };
@@ -42,7 +41,11 @@ const dotted = "bg-[radial-gradient(circle,currentColor_.5px,transparent_.5px)] 
  * `booking` says where "Book a space" goes: this site's /book, or the separate booking site
  * (the admin switch decides).
  */
-export function SiteHeader({ booking }: { booking: { href: string; external: boolean } }) {
+/**
+ * `account` holds the server-rendered sign-in buttons (or "Dashboard" once signed in) for the
+ * desktop bar, the compact mobile bar and the mobile menu.
+ */
+export function SiteHeader({ booking, account }: { booking: { href: string; external: boolean }; account: { bar: ReactNode; compact: ReactNode; menu: ReactNode } }) {
   const bookLink: NavLink = { href: booking.href, label: "Book a space", external: booking.external };
   const entries: NavEntry[] = [
     { href: "/services", label: "Services" },
@@ -104,19 +107,10 @@ export function SiteHeader({ booking }: { booking: { href: string; external: boo
           </Suspense>
         </nav>
 
-        <div className="hidden items-center gap-3 lg:flex">
-          <ButtonLink href="/login" variant="glass" size="sm" className="px-4">
-            Sign in
-          </ButtonLink>
-          <ButtonLink href="/register" variant="light" size="sm" className="px-4">
-            Get started
-          </ButtonLink>
-        </div>
+        <div className="hidden items-center gap-3 lg:flex">{account.bar}</div>
 
         <div className="flex items-center gap-3 lg:hidden">
-          <ButtonLink href="/register" variant="light" size="sm" className="px-3.5">
-            Get started
-          </ButtonLink>
+          {account.compact}
           <button
             type="button"
             className="relative -mr-1 flex size-10 items-center justify-center"
@@ -178,12 +172,7 @@ export function SiteHeader({ booking }: { booking: { href: string; external: boo
           style={{ transitionDelay: open ? "700ms" : "0ms" } as CSSProperties}
           className={cn("mt-8 grid shrink-0 grid-cols-2 gap-3 transition-all duration-300 motion-reduce:transition-none", open ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0")}
         >
-          <ButtonLink href="/login" variant="glass" size="lg" >
-            Sign in
-          </ButtonLink>
-          <ButtonLink href="/register" variant="light" size="lg">
-            Get started
-          </ButtonLink>
+          {account.menu}
         </div>
       </div>
     </header>
