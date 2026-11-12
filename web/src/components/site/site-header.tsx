@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense, useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
-import { ArrowUpRight, Building2, ChevronDown, GraduationCap, ListChecks, MapPinned, MessageCircle, Mic, type LucideIcon } from "lucide-react";
+import { ArrowUpRight, Building2, ChevronDown, GraduationCap, ListChecks, MapPinned, MessageCircle, Mic, Newspaper, type LucideIcon } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +21,7 @@ const solutions: NavLink[] = [
 const company: NavLink[] = [
   { href: "/#how", label: "How it works", icon: ListChecks, description: "From sign-up to done, step by step" },
   { href: "/about", label: "About", icon: Building2, description: "Who we are and what we do" },
+  { href: "/blog", label: "Blog", icon: Newspaper, description: "News, events and guides" },
   { href: "/contact", label: "Contact", icon: MessageCircle, description: "Visit, call or WhatsApp us" },
 ];
 

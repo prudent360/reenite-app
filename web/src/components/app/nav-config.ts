@@ -1,4 +1,5 @@
 import {
+  Newspaper,
   History,
   CalendarCheck,
   CalendarClock,
@@ -130,6 +131,7 @@ export const adminNav: NavSection[] = [
       { href: "/admin/orders", label: "Orders", icon: ClipboardList, permission: "orders.view_assigned", keywords: "pipeline filing" },
       { href: "/admin/customers", label: "Customers", icon: Users, permission: "customers.view", keywords: "users suspend" },
       { href: "/admin/legal", label: "Legal documents", icon: FileSignature, permission: "documents.manage", keywords: "agreements contracts sign virtual office upload" },
+      { href: "/admin/blog", label: "Blog", icon: Newspaper, permission: "content.manage", keywords: "posts articles news write publish seo wordpress" },
       { href: "/admin/mail", label: "Mail", icon: Mailbox, permission: "mail.manage", keywords: "virtual office mailbox letters parcels scan forward collect" },
       { href: "/admin/compliance", label: "Compliance", icon: CalendarRange, permission: "compliance.manage", keywords: "deadlines overdue vat paye annual returns tcc customers businesses" },
       { href: "/admin/consultations", label: "Consultations", icon: CalendarClock, permission: "consultations.view_assigned", keywords: "advice sessions meetings officer video call" },

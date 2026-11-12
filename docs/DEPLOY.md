@@ -5,10 +5,10 @@ This guide takes the app from your computer to the internet. Follow the parts in
 | Part | Lives on | Address |
 |---|---|---|
 | API, database, uploaded files, emails, backups (`api/` folder) | Hostinger | `https://api.reenite.com` |
-| Website, customer dashboard, admin (`web/` folder) | Vercel | `https://app.reenite.com` |
-| Your current WordPress site | Hostinger (unchanged) | `https://reenite.com` |
+| Website, booking, customer dashboard, admin (`web/` folder) | Vercel | `https://reenite.com` (`www.reenite.com` redirects to it) |
+| Email (`hello@reenite.com` and the rest) | Wherever it is now | unchanged |
 
-Start on `app.reenite.com`. When you are happy, `reenite.com` can point to the new site instead (Part F).
+`reenite.com` runs your WordPress site today. The new site replaces it, but only after you have tested it (Part D). Until then you test on the address Vercel gives you, and WordPress stays live for visitors.
 
 ---
 
@@ -136,30 +136,20 @@ Use your own home folder (run `pwd` over SSH to see it). This one job runs every
    | Name | Value |
    |---|---|
    | `API_URL` | `https://api.reenite.com` |
-   | `NEXT_PUBLIC_SITE_URL` | `https://app.reenite.com` |
+   | `NEXT_PUBLIC_SITE_URL` | `https://reenite.com` |
    | `INTERNAL_API_KEY` | the same secret as the API |
 
 4. Deploy.
 5. Project > **Settings > Functions > Region**: choose the region closest to your Hostinger server. hPanel shows the server's location. For example, the United Kingdom is `lhr1`, and France, the Netherlands or Lithuania are `cdg1` or `fra1`. Every page talks to the API, so a far-away region makes the site slow.
-6. Project > **Settings > Domains**: add `app.reenite.com`. Vercel shows the DNS record it needs (next part).
+6. Open the address Vercel shows (something like `reenite-web.vercel.app`) and do Part C there. Don't add a domain yet.
+
+While you test on the Vercel address, links in emails and QR codes already say `reenite.com`, which still shows WordPress. That's expected and goes away after Part D.
 
 ---
 
-## Part C: DNS (in Hostinger, because it manages reenite.com)
+## Part C: first sign-in and settings
 
-hPanel > **Domains > reenite.com > DNS / Nameservers**:
-
-| Type | Name | Points to |
-|---|---|---|
-| CNAME | `app` | `cname.vercel-dns.com` |
-
-`api` was created with the subdomain in A2. DNS changes take from a few minutes to a few hours. Vercel issues the SSL certificate by itself.
-
----
-
-## Part D: first sign-in and settings
-
-Go to `https://app.reenite.com/login` and sign in with the admin you created in A5. Then, under **Admin > Settings**:
+Go to the Vercel address from B6 (after Part D, `https://reenite.com`), open `/login`, and sign in with the admin you created in A5. Then, under **Admin > Settings**:
 
 1. **Email delivery:** enter your SMTP details, send the test email, and switch delivery on.
 2. **Payment gateways:** turn on Paystack, choose **Live**, and paste the keys yourself. In the Paystack dashboard, set the webhook URL to:
@@ -181,6 +171,51 @@ Then:
 - Read `/privacy` and `/terms`, and fill in the company's legal name, RC number and contact email in `web/src/content/site.ts` (`legalEntity`). A lawyer should review both before launch.
 
 **Test before telling customers:** create a customer account with your own email, order a cheap service, pay a small real amount, and check that the payment, email and order tracker all work. Then refund it from Admin > Finance.
+
+---
+
+## Part D: move reenite.com from WordPress to the new site
+
+Do this once Part C works on the Vercel address. Pick a quiet time: visitors may see either site for up to a few hours while DNS updates.
+
+### D1. Before you switch
+
+1. **Back up WordPress** (hPanel > Files > Backups, or a backup plugin). Leave its files on Hostinger. Nothing below deletes them, and pointing the domain back undoes the switch.
+2. **Copy the blog over** while WordPress is still live. Over SSH:
+
+   ```bash
+   cd ~/reenite/api && php artisan blog:import-wordpress
+   ```
+
+   It copies every post with its photos, dates, authors and Google descriptions, and lists them as `copied`. Check them under **Admin > Blog**. Running it again skips posts already copied, so it's safe to repeat if you publish another post on WordPress before switching.
+   Every old WordPress address already has a permanent redirect to its new page (`web/next.config.ts`): posts move from `/post-name` to `/blog/post-name`, and pages like `/book-a-space` go to `/book`. Old links and Google rankings carry over. If you add WordPress pages before switching, ask Claude to add their redirects.
+3. hPanel > **Domains > reenite.com > DNS / Nameservers**: take a screenshot of every record. Check that `api` has its **own** A record. If it doesn't, add one pointing to the same IP the root (`@`) record shows now, so the API stays on Hostinger when the root moves.
+
+### D2. Add the domain on Vercel
+
+Project > **Settings > Domains**: add `reenite.com`, then `www.reenite.com`, and set `www` to redirect to `reenite.com`. Vercel shows the exact records it wants. Use those if they differ from the table below.
+
+### D3. Change DNS in Hostinger
+
+hPanel > **Domains > reenite.com > DNS / Nameservers**:
+
+| Type | Name | Change |
+|---|---|---|
+| A | `@` | Edit it to Vercel's IP, `76.76.21.21` (delete any other `A` or `AAAA` records on `@`) |
+| CNAME | `www` | `cname.vercel-dns.com` (replace the existing `www` record) |
+
+**Leave everything else alone**: `MX`, `TXT` (SPF, DKIM, DMARC), `mail`, `api`, `scholarship` and `book`. Email keeps working because it uses the `MX` records, not the website's.
+
+DNS changes take from a few minutes to a few hours. Vercel issues the SSL certificate by itself, and the Domains page turns green when it's done.
+
+### D4. After the switch
+
+- Open `https://reenite.com` and `https://www.reenite.com` in a private window, and sign in at `https://reenite.com/login`.
+- Send yourself a password reset and check that the email's link opens `reenite.com`.
+- Google Search Console: submit `https://reenite.com/sitemap.xml`.
+- Update `reenite.com` links you control: Google Business Profile, Instagram and other social bios, the WhatsApp Business profile, and printed QR codes if any point at old WordPress pages.
+- Once bookings run on this site (Part C, step 5), point `book.reenite.com` to the new site: add it in Vercel Domains as a redirect to `https://reenite.com/book`, and change its DNS record to `CNAME cname.vercel-dns.com`.
+- Keep the WordPress backup for a few months, then cancel any WordPress-only hosting add-ons.
 
 ---
 

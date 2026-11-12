@@ -73,6 +73,7 @@ export function SiteFooter({ booking, account }: { booking: { href: string; exte
           <h3 className="text-sm font-bold text-white">Company</h3>
           <ul className="mt-4 space-y-2.5 text-sm">
             <li><Link href="/about" className="hover:text-white">About us</Link></li>
+            <li><Link href="/blog" className="hover:text-white">Blog</Link></li>
             <li>
               <a href={academy.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 hover:text-white">
                 Reenite Academy <ArrowUpRight className="size-3.5" />

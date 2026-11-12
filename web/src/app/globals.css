@@ -505,3 +505,107 @@ h4 {
 .legal-body a:hover {
   text-decoration: underline;
 }
+
+/* Blog post bodies (HTML rendered from Markdown by the API). */
+.article-body {
+  color: var(--foreground);
+  font-size: 1.0625rem;
+  line-height: 1.8;
+  overflow-wrap: break-word;
+}
+.article-body > * + * {
+  margin-top: 1.25em;
+}
+.article-body h2,
+.article-body h3,
+.article-body h4 {
+  font-family: var(--font-display, inherit);
+  font-weight: 700;
+  line-height: 1.25;
+  scroll-margin-top: 6rem;
+}
+.article-body h2 {
+  font-size: 1.6rem;
+  margin-top: 2em;
+}
+.article-body h3 {
+  font-size: 1.3rem;
+  margin-top: 1.75em;
+}
+.article-body h4 {
+  font-size: 1.1rem;
+  margin-top: 1.5em;
+}
+.article-body :is(h2, h3, h4) + * {
+  margin-top: 0.6em;
+}
+.article-body a {
+  color: var(--orange-600);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.article-body strong {
+  font-weight: 650;
+}
+.article-body ul,
+.article-body ol {
+  padding-left: 1.4rem;
+}
+.article-body ul {
+  list-style: disc;
+}
+.article-body ol {
+  list-style: decimal;
+}
+.article-body ol ol {
+  list-style: lower-alpha;
+}
+.article-body li + li,
+.article-body li > ul,
+.article-body li > ol {
+  margin-top: 0.4em;
+}
+.article-body li::marker {
+  color: var(--orange-600);
+}
+.article-body blockquote {
+  border-left: 3px solid var(--orange-500);
+  padding: 0.25rem 0 0.25rem 1.1rem;
+  color: var(--muted);
+  font-style: italic;
+}
+.article-body img {
+  width: 100%;
+  height: auto;
+  border-radius: 1rem;
+  margin-top: 2em;
+}
+.article-body p:has(> img:only-child) + p > em:only-child {
+  display: block;
+  margin-top: -0.6em;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+.article-body hr {
+  border-color: var(--border);
+  margin: 2.5em 0;
+}
+.article-body code {
+  border-radius: 0.375rem;
+  background: var(--surface-muted);
+  padding: 0.1em 0.35em;
+  font-size: 0.9em;
+}
+.article-body pre {
+  overflow-x: auto;
+  border-radius: 0.75rem;
+  background: var(--navy-950);
+  color: white;
+  padding: 1rem;
+}
+.article-body pre code {
+  background: none;
+  padding: 0;
+}

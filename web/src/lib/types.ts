@@ -964,3 +964,26 @@ export type RenewalsOverview = {
   overdue: { id: number; number: string; customer: { id: number; name: string; email: string }; balance: number; due_at: string | null; reminders_sent: number }[];
   stats: { renewing_14_days: number; auto_renew_share: number | null; overdue_total: number };
 };
+
+/** A blog post. body_html comes with a single post; the admin fields only from /admin/blog. */
+export type BlogPost = {
+  id: number;
+  slug: string;
+  title: string;
+  excerpt: string;
+  cover_url: string | null;
+  cover_alt: string | null;
+  category: string | null;
+  author_name: string | null;
+  published_at: string | null;
+  reading_minutes: number;
+  meta_description: string | null;
+  body_html?: string;
+  state?: "draft" | "scheduled" | "published";
+  own_excerpt?: string | null;
+  from_wordpress?: boolean;
+  updated_at?: string | null;
+  body?: string;
+};
+
+export type BlogIndex = Paginated<BlogPost> & { categories: string[] };

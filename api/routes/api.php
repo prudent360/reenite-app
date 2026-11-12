@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\Admin\ActivityLogController;
 use App\Http\Controllers\Api\V1\Admin\AppointmentController as AdminAppointmentController;
+use App\Http\Controllers\Api\V1\Admin\BlogPostController;
 use App\Http\Controllers\Api\V1\Admin\BookingController as AdminBookingController;
 use App\Http\Controllers\Api\V1\Admin\BundleController;
 use App\Http\Controllers\Api\V1\Admin\ComplianceController as AdminComplianceController;
@@ -45,6 +46,7 @@ use App\Http\Controllers\Api\V1\Auth\EmailVerificationController;
 use App\Http\Controllers\Api\V1\Auth\PasswordResetController;
 use App\Http\Controllers\Api\V1\Billing\BillingController;
 use App\Http\Controllers\Api\V1\Billing\PaymentMethodController;
+use App\Http\Controllers\Api\V1\BlogController;
 use App\Http\Controllers\Api\V1\BookingController;
 use App\Http\Controllers\Api\V1\BusinessController;
 use App\Http\Controllers\Api\V1\CatalogueController;
@@ -63,6 +65,8 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->name('v1.')->group(function () {
     Route::get('catalogue', [CatalogueController::class, 'index'])->name('catalogue.index');
     Route::get('catalogue/services/{slug}', [CatalogueController::class, 'show'])->name('catalogue.services.show');
+    Route::get('blog', [BlogController::class, 'index'])->name('blog.index');
+    Route::get('blog/{slug}', [BlogController::class, 'show'])->name('blog.show');
     Route::get('workspace', [WorkspaceController::class, 'index'])->name('workspace.index');
     Route::get('workspace/spaces/{slug}', [WorkspaceController::class, 'space'])->name('workspace.spaces.show');
     Route::get('workspace/booking-settings', [WorkspaceController::class, 'bookingSettings'])->name('workspace.booking-settings');
@@ -270,6 +274,14 @@ Route::prefix('v1')->name('v1.')->group(function () {
                 Route::post('{order}/files/{file}/review', [AdminOrderController::class, 'reviewFile'])->name('files.review');
                 Route::post('{order}/messages', [AdminOrderController::class, 'message'])->name('messages.store');
             });
+
+            Route::prefix('blog')->name('blog.')->middleware('permission:content.manage')->group(function () {
+                Route::post('images', [BlogPostController::class, 'image'])->middleware('throttle:30,1')->name('images.store');
+                Route::post('preview', [BlogPostController::class, 'preview'])->name('preview');
+                Route::post('{post}/cover', [BlogPostController::class, 'cover'])->name('cover');
+                Route::delete('{post}/cover', [BlogPostController::class, 'removeCover'])->name('cover.destroy');
+            });
+            Route::apiResource('blog', BlogPostController::class)->parameters(['blog' => 'post'])->middleware('permission:content.manage');
 
             Route::prefix('consultations')->name('consultations.')->group(function () {
                 Route::middleware('permission:consultations.manage')->group(function () {
