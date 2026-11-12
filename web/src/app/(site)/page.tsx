@@ -945,7 +945,7 @@ function PodcastStudio({ settings }: { settings: BookingSettings }) {
           <div className="relative aspect-[5/4] overflow-hidden rounded-[18px]">
             <Image
               src="/images/home/podcast-studio.jpg"
-              alt="Microphones set up in a podcast studio"
+              alt="A phone on a stand recording two armchairs in the podcast studio"
               fill
               sizes="(min-width: 1024px) 600px, 100vw"
               className="object-cover"
