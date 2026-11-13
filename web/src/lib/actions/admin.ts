@@ -39,3 +39,36 @@ export async function setCustomerStatus(userId: number, status: "active" | "susp
   refresh();
   return { ok: true, message: status === "suspended" ? "Customer suspended." : "Customer reactivated." };
 }
+
+type BulkResult = FormState & { count?: number };
+
+/** Suspends or reactivates several customers at once. */
+export async function setCustomersStatus(ids: number[], status: "active" | "suspended"): Promise<BulkResult> {
+  try {
+    const result = await api<{ updated: number; message: string }>("/admin/customers/bulk/status", { method: "POST", body: { ids, status } });
+    refresh();
+    return { ok: true, message: result.message, count: result.updated };
+  } catch (error) {
+    return toFormState(error);
+  }
+}
+
+/** Deletes customers with no history; anyone with bookings, orders or payments is kept. */
+export async function deleteCustomers(ids: number[]): Promise<BulkResult> {
+  try {
+    const result = await api<{ deleted: number; message: string }>("/admin/customers/bulk/delete", { method: "POST", body: { ids } });
+    refresh();
+    return { ok: true, message: result.message, count: result.deleted };
+  } catch (error) {
+    return toFormState(error);
+  }
+}
+
+export async function messageCustomers(ids: number[], input: { subject: string; message: string; channels: ("email" | "whatsapp")[] }): Promise<BulkResult> {
+  try {
+    const result = await api<{ recipients: number; message: string }>("/admin/customers/bulk/message", { method: "POST", body: { ids, ...input } });
+    return { ok: true, message: result.message, count: result.recipients };
+  } catch (error) {
+    return toFormState(error);
+  }
+}

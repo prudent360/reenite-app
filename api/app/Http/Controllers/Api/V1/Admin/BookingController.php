@@ -110,6 +110,91 @@ class BookingController extends Controller
         ]);
     }
 
+    /**
+     * Sessions not checked in this long after they started count as "not arrived".
+     */
+    public const NOT_ARRIVED_AFTER_MINUTES = 30;
+
+    /**
+     * The session monitor: everyone in a space right now, and everyone still due today.
+     */
+    public function monitor(): JsonResponse
+    {
+        $timezone = (string) config('app.display_timezone');
+        $endOfToday = now()->setTimezone($timezone)->endOfDay()->utc();
+
+        $sessions = Booking::query()
+            ->whereIn('status', [BookingStatus::Confirmed->value, BookingStatus::CheckedIn->value])
+            ->where('ends_at', '>', now())
+            ->where('starts_at', '<=', $endOfToday)
+            ->with(['user', 'assignedSeats', 'customerPass.plan'])
+            ->orderBy('ends_at')
+            ->get()
+            ->map(function (Booking $booking) {
+                $active = $booking->starts_at->lessThanOrEqualTo(now());
+                $lengthMinutes = $booking->starts_at->diffInMinutes($booking->ends_at, true);
+
+                return [
+                    'reference' => $booking->reference,
+                    'status' => $booking->status->value,
+                    'phase' => $active ? 'active' : 'upcoming',
+                    'customer' => ['name' => $booking->user->name, 'email' => $booking->user->email, 'phone' => $booking->user->phone],
+                    'space_name' => $booking->space_name,
+                    'location_name' => $booking->location_name,
+                    'seat_labels' => $booking->seatLabels(),
+                    'people' => $booking->seats,
+                    'length_label' => $this->lengthLabel($booking),
+                    'starts_at' => $booking->starts_at->toIso8601String(),
+                    'ends_at' => $booking->ends_at->toIso8601String(),
+                    'checked_in_at' => $booking->checked_in_at?->toIso8601String(),
+                    'ending_soon' => $active && BookingService::isEndingSoon($booking),
+                    // Day-or-shorter sessions only: long bookings check in once and come and go.
+                    'not_arrived' => $active && $booking->status === BookingStatus::Confirmed && $lengthMinutes <= 24 * 60
+                        && $booking->starts_at->lessThanOrEqualTo(now()->subMinutes(self::NOT_ARRIVED_AFTER_MINUTES)),
+                    'can_check_in' => $booking->status === BookingStatus::Confirmed && $booking->starts_at->lessThanOrEqualTo(now()->addHours(2)),
+                ];
+            });
+
+        $active = $sessions->where('phase', 'active');
+
+        return response()->json([
+            'data' => [
+                'generated_at' => now()->toIso8601String(),
+                'counts' => [
+                    'active' => $active->count(),
+                    'ending_soon' => $active->where('ending_soon', true)->count(),
+                    'not_arrived' => $active->where('not_arrived', true)->count(),
+                    'upcoming' => $sessions->where('phase', 'upcoming')->count(),
+                    'checked_in' => $active->where('status', BookingStatus::CheckedIn->value)->count(),
+                ],
+                'sessions' => $sessions->values(),
+            ],
+        ]);
+    }
+
+    /**
+     * Ends a session in progress now, freeing the rest of its time.
+     */
+    public function end(Request $request, Booking $booking): BookingResource
+    {
+        $this->bookings->endEarly($booking, $request->user());
+
+        return $this->show($booking->refresh());
+    }
+
+    /**
+     * "3 hours", "1 day", "1 month", or the pass it was booked with.
+     */
+    private function lengthLabel(Booking $booking): string
+    {
+        if ($booking->paid_via === 'pass' && $booking->customerPass?->plan) {
+            return $booking->customerPass->plan->name;
+        }
+        $quantity = max(1, (int) $booking->quantity);
+
+        return $quantity.' '.$booking->rate_unit.($quantity === 1 ? '' : 's');
+    }
+
     public function show(Booking $booking): BookingResource
     {
         $booking->load(['user', 'space.location', 'addons', 'assignedSeats', 'invoice.payments', 'checkedInBy']);

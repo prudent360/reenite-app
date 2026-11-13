@@ -22,7 +22,11 @@ Artisan::command('bookings:expire-holds', function (BookingService $bookings) {
 
 Artisan::command('bookings:complete', function (BookingService $bookings) {
     $this->info($bookings->completeEnded().' bookings completed.');
-})->purpose('Mark bookings that have ended as completed');
+})->purpose('Mark bookings that have ended as completed and tell their customers');
+
+Artisan::command('bookings:remind-ending', function (BookingService $bookings) {
+    $this->info($bookings->sendEndingReminders().' "ending soon" messages sent.');
+})->purpose('Tell customers their session is about to end');
 
 Artisan::command('bookings:remind', function (BookingService $bookings) {
     $this->info($bookings->sendReminders().' reminders sent.');
@@ -64,7 +68,9 @@ Artisan::command('billing:remind', function (PaymentReminders $reminders) {
 })->purpose('Remind customers about unpaid invoices and unfinished checkouts');
 
 Schedule::command('bookings:expire-holds')->everyMinute()->withoutOverlapping()->onOneServer();
-Schedule::command('bookings:complete')->everyFifteenMinutes()->withoutOverlapping()->onOneServer();
+// Sessions: end them on time and warn customers shortly before, so both run often.
+Schedule::command('bookings:complete')->everyFiveMinutes()->withoutOverlapping()->onOneServer();
+Schedule::command('bookings:remind-ending')->everyFiveMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command('bookings:remind')->hourly()->withoutOverlapping()->onOneServer();
 Schedule::command('consultations:expire-holds')->everyMinute()->withoutOverlapping()->onOneServer();
 Schedule::command('consultations:remind')->hourly()->withoutOverlapping()->onOneServer();

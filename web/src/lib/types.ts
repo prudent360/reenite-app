@@ -1032,3 +1032,28 @@ export type SelfCheckInSettings = {
   enabled: boolean;
   url: string;
 };
+
+/** One booking on the session monitor: in progress now, or still due today. */
+export type MonitorSession = {
+  reference: string;
+  status: "confirmed" | "checked_in";
+  phase: "active" | "upcoming";
+  customer: { name: string; email: string; phone: string | null };
+  space_name: string;
+  location_name: string;
+  seat_labels: string;
+  people: number;
+  length_label: string;
+  starts_at: string;
+  ends_at: string;
+  checked_in_at: string | null;
+  ending_soon: boolean;
+  not_arrived: boolean;
+  can_check_in: boolean;
+};
+
+export type SessionMonitor = {
+  generated_at: string;
+  counts: { active: number; ending_soon: number; not_arrived: number; upcoming: number; checked_in: number };
+  sessions: MonitorSession[];
+};

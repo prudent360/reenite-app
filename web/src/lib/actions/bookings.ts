@@ -156,6 +156,11 @@ export async function checkInBooking(reference: string): Promise<FormState> {
   return adminCall(`/admin/bookings/${reference}/check-in`, undefined, "Checked in.");
 }
 
+/** Ends a session in progress now; the customer gets the "session ended" message. */
+export async function endSession(reference: string): Promise<FormState> {
+  return adminCall(`/admin/bookings/${reference}/end`, undefined, "Session ended. The customer has been told.");
+}
+
 export async function approveBooking(reference: string): Promise<FormState> {
   return adminCall(`/admin/bookings/${reference}/approve`, undefined, "Booking approved. The customer has been asked to pay.");
 }

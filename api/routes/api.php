@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\Admin\BundleController;
 use App\Http\Controllers\Api\V1\Admin\ComplianceController as AdminComplianceController;
 use App\Http\Controllers\Api\V1\Admin\ConsultationController as AdminConsultationController;
 use App\Http\Controllers\Api\V1\Admin\ConsultationTypeController;
+use App\Http\Controllers\Api\V1\Admin\CustomerBulkController;
 use App\Http\Controllers\Api\V1\Admin\DashboardController;
 use App\Http\Controllers\Api\V1\Admin\Finance\CouponController;
 use App\Http\Controllers\Api\V1\Admin\Finance\InvoiceController as AdminInvoiceController;
@@ -211,6 +212,11 @@ Route::prefix('v1')->name('v1.')->group(function () {
                 Route::get('customers', [UserController::class, 'index'])->name('customers.index');
                 Route::get('customers/{user}', [UserController::class, 'show'])->name('customers.show');
             });
+            Route::middleware('permission:customers.manage')->prefix('customers/bulk')->name('customers.bulk.')->group(function () {
+                Route::post('status', [CustomerBulkController::class, 'status'])->name('status');
+                Route::post('delete', [CustomerBulkController::class, 'destroy'])->name('delete');
+                Route::post('message', [CustomerBulkController::class, 'message'])->middleware('throttle:10,1')->name('message');
+            });
             Route::patch('customers/{user}/status', [UserController::class, 'updateStatus'])
                 ->middleware('permission:customers.manage')
                 ->name('customers.status');
@@ -260,12 +266,14 @@ Route::prefix('v1')->name('v1.')->group(function () {
                 Route::middleware('permission:bookings.manage|bookings.checkin')->group(function () {
                     Route::get('/', [AdminBookingController::class, 'index'])->name('index');
                     Route::get('day', [AdminBookingController::class, 'day'])->name('day');
+                    Route::get('monitor', [AdminBookingController::class, 'monitor'])->name('monitor');
                     Route::post('check-in', [AdminBookingController::class, 'checkInByCode'])->name('check-in-by-code');
                     Route::get('{booking}', [AdminBookingController::class, 'show'])->name('show');
                     Route::post('{booking}/check-in', [AdminBookingController::class, 'checkIn'])->name('check-in');
                 });
                 Route::middleware('permission:bookings.manage')->group(function () {
                     Route::post('{booking}/cancel', [AdminBookingController::class, 'cancel'])->name('cancel');
+                    Route::post('{booking}/end', [AdminBookingController::class, 'end'])->name('end');
                     Route::post('{booking}/approve', [AdminBookingController::class, 'approve'])->name('approve');
                     Route::post('{booking}/decline', [AdminBookingController::class, 'decline'])->name('decline');
                     Route::get('{booking}/seats', [AdminBookingController::class, 'seats'])->name('seats');

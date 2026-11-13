@@ -23,7 +23,7 @@ use Illuminate\Support\Str;
     'user_id', 'space_id', 'invoice_id', 'customer_pass_id', 'status', 'starts_at', 'ends_at', 'rate_unit',
     'quantity', 'seats', 'subtotal', 'addons_total', 'discount', 'discount_label', 'total', 'pass_credits_used',
     'paid_via', 'hold_expires_at', 'check_in_code', 'checked_in_at', 'checked_in_by', 'checked_in_via', 'manage_token', 'nudged_at',
-    'space_name', 'location_name', 'policy_snapshot', 'notes', 'confirmed_at', 'reminder_sent_at',
+    'space_name', 'location_name', 'policy_snapshot', 'notes', 'confirmed_at', 'reminder_sent_at', 'ending_notice_sent_at', 'ended_notice_sent_at', 'ended_early_at', 'ended_by',
     'cancelled_at', 'cancelled_by', 'cancel_reason', 'refund_amount',
 ])]
 #[Hidden(['manage_token'])]
@@ -53,6 +53,9 @@ class Booking extends Model
             'checked_in_at' => 'datetime',
             'confirmed_at' => 'datetime',
             'reminder_sent_at' => 'datetime',
+            'ending_notice_sent_at' => 'datetime',
+            'ended_notice_sent_at' => 'datetime',
+            'ended_early_at' => 'datetime',
             'cancelled_at' => 'datetime',
             'nudged_at' => 'datetime',
             'manage_token' => 'encrypted',

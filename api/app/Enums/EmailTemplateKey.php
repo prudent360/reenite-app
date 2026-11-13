@@ -12,6 +12,7 @@ enum EmailTemplateKey: string
     case PasswordReset = 'password_reset';
     case StaffInvite = 'staff_invite';
     case PasswordChanged = 'password_changed';
+    case CustomerMessage = 'customer_message';
     case InvoiceIssued = 'invoice_issued';
     case PaymentReceipt = 'payment_receipt';
     case TransferReceived = 'transfer_received';
@@ -27,6 +28,8 @@ enum EmailTemplateKey: string
     case BookingAwaitingPayment = 'booking_awaiting_payment';
     case BookingPendingApproval = 'booking_pending_approval';
     case BookingReminder = 'booking_reminder';
+    case BookingEndingSoon = 'booking_ending_soon';
+    case BookingEnded = 'booking_ended';
     case BookingCancelled = 'booking_cancelled';
     case GuestAccountInvite = 'guest_account_invite';
     case PassActivated = 'pass_activated';
@@ -64,10 +67,10 @@ enum EmailTemplateKey: string
     public function group(): string
     {
         return match ($this) {
-            self::EmailVerification, self::PasswordReset, self::StaffInvite, self::PasswordChanged => 'Account',
+            self::EmailVerification, self::PasswordReset, self::StaffInvite, self::PasswordChanged, self::CustomerMessage => 'Account',
             self::InvoiceIssued, self::PaymentReceipt, self::TransferReceived, self::TransferRejected, self::InvoiceReminder, self::CheckoutNudge => 'Billing',
             self::OrderReceived, self::OrderUpdated, self::InfoRequested, self::OrderCompleted, self::OrderMessage => 'Orders',
-            self::BookingConfirmed, self::BookingAwaitingPayment, self::BookingPendingApproval, self::BookingReminder,
+            self::BookingConfirmed, self::BookingAwaitingPayment, self::BookingPendingApproval, self::BookingReminder, self::BookingEndingSoon, self::BookingEnded,
             self::BookingCancelled, self::GuestAccountInvite => 'Bookings',
             self::PassActivated, self::PassExpiring, self::MembershipActivated, self::MembershipRenewalDue,
             self::PassRenewalDue, self::RenewalUpcoming, self::RenewalFailed => 'Passes and memberships',
@@ -97,6 +100,7 @@ enum EmailTemplateKey: string
             self::PasswordReset => 'Password reset',
             self::StaffInvite => 'Staff invitation',
             self::PasswordChanged => 'Password changed',
+            self::CustomerMessage => 'Message from the team',
             self::InvoiceIssued => 'New invoice',
             self::PaymentReceipt => 'Payment receipt',
             self::TransferReceived => 'Transfer received',
@@ -112,6 +116,8 @@ enum EmailTemplateKey: string
             self::BookingAwaitingPayment => 'Booking held, payment needed',
             self::BookingPendingApproval => 'Booking request received',
             self::BookingReminder => 'Booking reminder',
+            self::BookingEndingSoon => 'Session ending soon',
+            self::BookingEnded => 'Session ended',
             self::BookingCancelled => 'Booking cancelled',
             self::GuestAccountInvite => 'Guest: create an account',
             self::PassActivated => 'Pass activated',
@@ -150,6 +156,7 @@ enum EmailTemplateKey: string
             self::PasswordReset => 'Sent when someone asks to reset a forgotten password.',
             self::StaffInvite => 'Sent to new team members so they can set their password.',
             self::PasswordChanged => 'Security alert after a password is changed or reset.',
+            self::CustomerMessage => 'Messages staff send to selected customers from the Customers page. Subject and message are what staff type.',
             self::InvoiceIssued => 'Sent when the team raises an invoice for a customer.',
             self::PaymentReceipt => 'Sent when a payment succeeds, with a link to the receipt.',
             self::TransferReceived => 'Confirms we received proof of a bank transfer and are checking it.',
@@ -165,6 +172,8 @@ enum EmailTemplateKey: string
             self::BookingAwaitingPayment => 'Sent when a space is held for someone paying by bank transfer.',
             self::BookingPendingApproval => 'Sent when a space needs approval before the booking is confirmed.',
             self::BookingReminder => 'Sent the day before a booking starts.',
+            self::BookingEndingSoon => 'Sent shortly before a session ends: 15 minutes before for a few hours, 1 hour before for a day, 1 day before for a week, 3 days before for longer.',
+            self::BookingEnded => 'Sent when a session ends, automatically at its end time or when staff end it early.',
             self::BookingCancelled => 'Sent when a booking is cancelled, with any refund due.',
             self::GuestAccountInvite => 'Sent to guests after they book, inviting them to create an account to manage bookings.',
             self::PassActivated => 'Sent when a customer buys a flexible pass such as 3 days a week.',
@@ -210,6 +219,9 @@ enum EmailTemplateKey: string
         return match ($this) {
             self::BookingConfirmed => ['first_name', 'space_name', 'booking_date', 'booking_time', 'check_in_code'],
             self::BookingReminder => ['first_name', 'space_name', 'booking_date', 'booking_time'],
+            self::BookingEndingSoon => ['first_name', 'space_name', 'time_left', 'end_time'],
+            self::BookingEnded => ['first_name', 'space_name', 'location_name'],
+            self::CustomerMessage => ['first_name', 'message'],
             self::InvoiceIssued => ['first_name', 'invoice_number', 'amount', 'due_date'],
             self::InvoiceReminder => ['first_name', 'invoice_number', 'amount', 'when'],
             self::RenewalUpcoming => ['first_name', 'plan_name', 'renews_on', 'amount'],
@@ -257,6 +269,7 @@ enum EmailTemplateKey: string
             self::EmailVerification, self::PasswordReset => $common + ['expires_minutes' => 'Minutes until the link expires'],
             self::StaffInvite => $common + ['role' => 'Their staff role', 'invited_by' => 'Who invited them', 'expires_minutes' => 'Minutes until the link expires'],
             self::PasswordChanged => $common + ['changed_at' => 'Date and time of the change'],
+            self::CustomerMessage => $common + ['subject' => 'The subject staff typed', 'message' => 'The message staff typed'],
             self::InvoiceIssued => $common + ['invoice_number' => 'Invoice number', 'amount' => 'Amount due', 'due_date' => 'Due date'],
             self::PaymentReceipt => $common + ['invoice_number' => 'Invoice number', 'amount' => 'Amount paid', 'receipt_number' => 'Receipt number', 'payment_method' => 'How they paid'],
             self::TransferReceived => $common + ['invoice_number' => 'Invoice number', 'amount' => 'Amount transferred'],
@@ -271,6 +284,8 @@ enum EmailTemplateKey: string
             self::BookingConfirmed => $common + $booking + ['amount' => 'Amount paid', 'check_in_code' => 'Code to show at reception', 'cancellation_policy' => 'Cancellation terms'],
             self::BookingAwaitingPayment => $common + $booking + ['amount' => 'Amount due', 'hold_expires' => 'When the hold ends'],
             self::BookingPendingApproval, self::BookingReminder => $common + $booking,
+            self::BookingEndingSoon => $common + $booking + ['time_left' => 'e.g. 15 minutes or 3 days', 'end_time' => 'When it ends, e.g. 5:00pm today'],
+            self::BookingEnded => $common + $booking + ['end_time' => 'When it ended'],
             self::BookingCancelled => $common + $booking + ['refund_amount' => 'Refund due (or "No refund")', 'reason' => 'Why it was cancelled'],
             self::GuestAccountInvite => $common + ['booking_reference' => 'Booking number', 'email' => 'The email they booked with'],
             self::PassActivated => $common + ['pass_name' => 'Pass', 'allowance' => 'e.g. 3 visits a week', 'valid_until' => 'End of the current period', 'amount' => 'Amount paid'],
@@ -315,6 +330,13 @@ enum EmailTemplateKey: string
                 'body' => "We received a request to reset the password for your {{app_name}} account.\n\nThis link expires in {{expires_minutes}} minutes.",
                 'button_text' => 'Choose a new password',
                 'footer' => "If you didn't ask for this, you can ignore this email. Your password won't change.",
+            ],
+            self::CustomerMessage => [
+                'subject' => '{{subject}}',
+                'heading' => 'Hi {{first_name}},',
+                'body' => '{{message}}',
+                'button_text' => null,
+                'footer' => 'You are receiving this because you have an account with {{app_name}}.',
             ],
             self::StaffInvite => [
                 'subject' => "You've been invited to the {{app_name}} team",
@@ -420,6 +442,20 @@ enum EmailTemplateKey: string
                 'body' => "A reminder that you've booked {{space_name}} for {{booking_date}}, {{booking_time}}.\n\nWe're at {{location_address}}. Show your booking code at reception when you arrive.",
                 'button_text' => 'View booking',
                 'footer' => "Can't make it? You can cancel from your booking page.",
+            ],
+            self::BookingEndingSoon => [
+                'subject' => 'Your {{space_name}} session ends in {{time_left}}',
+                'heading' => 'Hi {{first_name}},',
+                'body' => "Just a heads-up: your {{space_name}} session at {{location_name}} ends at {{end_time}}.\n\nNeed more time? Book again before you go and keep your spot.",
+                'button_text' => 'View booking',
+                'footer' => 'Please leave your space tidy for the next person. Thank you!',
+            ],
+            self::BookingEnded => [
+                'subject' => 'Thanks for working at {{location_name}}',
+                'heading' => 'Hi {{first_name}},',
+                'body' => "Your {{space_name}} session ({{booking_reference}}) ended at {{end_time}}.\n\nThank you for spending your time with us. We'd love to see you again.",
+                'button_text' => 'View booking',
+                'footer' => null,
             ],
             self::BookingCancelled => [
                 'subject' => 'Booking {{booking_reference}} cancelled',

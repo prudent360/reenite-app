@@ -507,10 +507,140 @@ class BookingService
      */
     public function completeEnded(): int
     {
-        return Booking::query()
+        $completed = 0;
+        Booking::query()
             ->whereIn('status', [BookingStatus::Confirmed->value, BookingStatus::CheckedIn->value])
             ->where('ends_at', '<=', now())
-            ->update(['status' => BookingStatus::Completed->value, 'updated_at' => now()]);
+            ->with(['user', 'space.location'])
+            ->orderBy('id')
+            ->chunkById(100, function ($bookings) use (&$completed) {
+                foreach ($bookings as $booking) {
+                    $booking->update(['status' => BookingStatus::Completed]);
+                    $completed++;
+                    // Only sessions that ended recently get the "session ended" message, so a backlog never floods inboxes.
+                    if ($booking->ends_at->greaterThan(now()->subHours(self::ENDED_NOTICE_WITHIN_HOURS))) {
+                        $this->sendEndedNotice($booking);
+                    }
+                }
+            });
+
+        return $completed;
+    }
+
+    /**
+     * Sessions only get the "session ended" message if they ended within this many hours.
+     */
+    public const ENDED_NOTICE_WITHIN_HOURS = 6;
+
+    /**
+     * How long before the end the "ending soon" message goes out, by the length of the session:
+     * 15 minutes for up to 8 hours, an hour for up to a day, a day for up to 8 days, else 3 days.
+     */
+    public static function endingNoticeMinutes(Booking $booking): int
+    {
+        $minutes = $booking->starts_at->diffInMinutes($booking->ends_at, true);
+
+        return match (true) {
+            $minutes <= 8 * 60 => 15,
+            $minutes <= 24 * 60 => 60,
+            $minutes <= 8 * 24 * 60 => 24 * 60,
+            default => 3 * 24 * 60,
+        };
+    }
+
+    /**
+     * Whether a session in progress is inside its "ending soon" window.
+     */
+    public static function isEndingSoon(Booking $booking): bool
+    {
+        return $booking->ends_at->isFuture() && $booking->ends_at->lessThanOrEqualTo(now()->addMinutes(self::endingNoticeMinutes($booking)));
+    }
+
+    /**
+     * Tells customers their session is about to end (email, plus WhatsApp if they opted in). Once per booking.
+     */
+    public function sendEndingReminders(): int
+    {
+        $sent = 0;
+        Booking::query()
+            ->whereIn('status', [BookingStatus::Confirmed->value, BookingStatus::CheckedIn->value])
+            ->whereNull('ending_notice_sent_at')
+            ->where('starts_at', '<=', now())
+            ->where('ends_at', '>', now())
+            ->where('ends_at', '<=', now()->addDays(3))
+            ->with(['user', 'space.location'])
+            ->orderBy('id')
+            ->chunkById(100, function ($bookings) use (&$sent) {
+                foreach ($bookings as $booking) {
+                    if (! self::isEndingSoon($booking)) {
+                        continue;
+                    }
+                    $booking->update(['ending_notice_sent_at' => now()]);
+                    $booking->user->notify(new BookingNotification(EmailTemplateKey::BookingEndingSoon, $booking, [
+                        'time_left' => self::timeLeft($booking),
+                        'end_time' => $this->endTime($booking),
+                    ]));
+                    $sent++;
+                }
+            });
+
+        return $sent;
+    }
+
+    /**
+     * Staff ending a session early from the session monitor. The rest of the time is freed up.
+     */
+    public function endEarly(Booking $booking, User $staff): Booking
+    {
+        abort_unless(in_array($booking->status, [BookingStatus::Confirmed, BookingStatus::CheckedIn], true), 422, 'Only sessions in progress can be ended.');
+        abort_if($booking->starts_at->isFuture(), 422, "This session hasn't started yet. Cancel the booking instead.");
+
+        $booking->update(['status' => BookingStatus::Completed, 'ended_early_at' => now(), 'ended_by' => $staff->id]);
+        $this->sendEndedNotice($booking->load(['user', 'space.location']));
+
+        return $booking;
+    }
+
+    private function sendEndedNotice(Booking $booking): void
+    {
+        if ($booking->ended_notice_sent_at) {
+            return;
+        }
+        $booking->update(['ended_notice_sent_at' => now()]);
+        $booking->user->notify(new BookingNotification(EmailTemplateKey::BookingEnded, $booking, [
+            'end_time' => $this->endTime($booking, $booking->ended_early_at),
+        ]));
+    }
+
+    /**
+     * "15 minutes", "1 hour", "3 days": time left until the end, rounded to the nearest sensible unit.
+     */
+    public static function timeLeft(Booking $booking): string
+    {
+        $minutes = max(1, (int) round(now()->diffInMinutes($booking->ends_at, true)));
+        [$value, $unit] = match (true) {
+            $minutes < 60 => [$minutes, 'minute'],
+            $minutes < 24 * 60 => [(int) round($minutes / 60), 'hour'],
+            default => [(int) round($minutes / (24 * 60)), 'day'],
+        };
+
+        return $value.' '.$unit.($value === 1 ? '' : 's');
+    }
+
+    /**
+     * "5:00pm today", "5:00pm tomorrow" or "5:00pm, Tue 17 Nov", in the location's time.
+     */
+    private function endTime(Booking $booking, ?\DateTimeInterface $at = null): string
+    {
+        $timezone = $booking->space?->location?->timezone ?: (string) config('app.display_timezone');
+        $end = CarbonImmutable::instance($at ?? $booking->ends_at)->setTimezone($timezone);
+        $today = now()->setTimezone($timezone);
+
+        return $end->format('g:ia').match (true) {
+            $end->isSameDay($today) => ' today',
+            $end->isSameDay($today->copy()->addDay()) => ' tomorrow',
+            default => ', '.$end->format('D j M'),
+        };
     }
 
     /**

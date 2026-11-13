@@ -1,4 +1,5 @@
 import {
+  Activity,
   Newspaper,
   History,
   CalendarCheck,
@@ -162,6 +163,7 @@ export const adminNav: NavSection[] = [
           { href: "/admin/workspace/spaces", label: "Spaces", icon: DoorOpen, permission: "workspace.manage", keywords: "rates capacity desk studio hall" },
           { href: "/admin/workspace/plans", label: "Passes & memberships", icon: BadgePercent, permission: "workspace.manage", keywords: "flexible plan membership discount" },
           { href: "/admin/bookings", label: "Bookings", icon: CalendarDays, permission: "bookings.manage", keywords: "check-in calendar" },
+          { href: "/admin/sessions", label: "Session monitor", icon: Activity, permission: "bookings.manage", keywords: "live sessions in progress active ending soon late not arrived who is in" },
         ],
       },
     ],
