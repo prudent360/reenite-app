@@ -53,7 +53,7 @@ async function Detail({ reference }: { reference: string }) {
       : []),
     ["Length", booking.rate_unit === "hour" ? `${booking.quantity} hour(s)` : `${booking.quantity} ${booking.rate_unit}(s)`],
     ["Check-in code", booking.check_in_code ? <span className="font-mono font-semibold tracking-widest">{booking.check_in_code}</span> : "Issued once paid"],
-    ["Checked in", booking.checked_in_at ? `${formatDateTime(booking.checked_in_at)}${booking.checked_in_by ? ` by ${booking.checked_in_by}` : ""}` : "Not yet"],
+    ["Checked in", booking.checked_in_at ? `${formatDateTime(booking.checked_in_at)}${booking.checked_in_via === "self" ? " (checked themselves in)" : booking.checked_in_by ? ` by ${booking.checked_in_by}` : ""}` : "Not yet"],
     ["Paid with", booking.paid_via ? { online: "Online payment", bank_transfer: "Bank transfer", pass: "Pass credits", free: "No charge", coupon: "Discount code (nothing to pay)" }[booking.paid_via] : "Not paid yet"],
     ["Notes", booking.notes ?? "None"],
   ];

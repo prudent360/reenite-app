@@ -36,6 +36,7 @@ use App\Http\Controllers\Api\V1\Admin\Workspace\LocationController;
 use App\Http\Controllers\Api\V1\Admin\Workspace\MailboxController as AdminMailboxController;
 use App\Http\Controllers\Api\V1\Admin\Workspace\MembershipPlanController;
 use App\Http\Controllers\Api\V1\Admin\Workspace\PassPlanController;
+use App\Http\Controllers\Api\V1\Admin\Workspace\SelfCheckInController as AdminSelfCheckInController;
 use App\Http\Controllers\Api\V1\Admin\Workspace\SpaceController;
 use App\Http\Controllers\Api\V1\Admin\Workspace\SpaceSeatController;
 use App\Http\Controllers\Api\V1\Admin\Workspace\SpaceTypeController;
@@ -58,6 +59,7 @@ use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\PlanController;
 use App\Http\Controllers\Api\V1\ProfileController;
+use App\Http\Controllers\Api\V1\SelfCheckInController;
 use App\Http\Controllers\Api\V1\UploadGrantController;
 use App\Http\Controllers\Api\V1\WebhookController;
 use App\Http\Controllers\Api\V1\WorkspaceController;
@@ -97,6 +99,9 @@ Route::prefix('v1')->name('v1.')->group(function () {
     Route::post('appointments/{appointment}/respond', [AppointmentController::class, 'respond'])->middleware('throttle:10,1')->name('appointments.respond');
 
     // The website asks for a link so the browser can send a file straight here (not via Vercel).
+    Route::get('check-in/{token}', [SelfCheckInController::class, 'show'])->middleware('throttle:30,1')->name('self-check-in.show');
+    Route::post('check-in/{token}', [SelfCheckInController::class, 'store'])->middleware('throttle:10,1')->name('self-check-in.store');
+
     Route::post('upload-grants', [UploadGrantController::class, 'store'])->middleware('throttle:30,1')->name('upload-grants.store');
 
     // Gateway notifications: authenticated by signature, not by session.
@@ -224,6 +229,9 @@ Route::prefix('v1')->name('v1.')->group(function () {
 
             Route::prefix('workspace')->name('workspace.')->middleware('permission:workspace.manage')->group(function () {
                 Route::apiResource('locations', LocationController::class);
+                Route::get('locations/{location}/self-check-in', [AdminSelfCheckInController::class, 'show'])->name('locations.self-check-in.show');
+                Route::put('locations/{location}/self-check-in', [AdminSelfCheckInController::class, 'update'])->name('locations.self-check-in.update');
+                Route::post('locations/{location}/self-check-in/regenerate', [AdminSelfCheckInController::class, 'regenerate'])->name('locations.self-check-in.regenerate');
                 Route::apiResource('space-types', SpaceTypeController::class)->except('show');
                 Route::apiResource('spaces', SpaceController::class);
                 Route::post('spaces/{space}/photo', [SpaceController::class, 'photo'])->name('spaces.photo');

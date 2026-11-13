@@ -13,12 +13,17 @@ export function checkInLink(code: string): string {
  * just reaches the sign-in page.
  */
 export async function CheckInQr({ code, className }: { code: string; className?: string }) {
-  const svg = await QRCode.toString(checkInLink(code), {
+  return <QrCode value={checkInLink(code)} label={`QR code for check-in code ${code}`} className={className} />;
+}
+
+/** Any link as a QR code, drawn on the server as SVG. */
+export async function QrCode({ value, label, className }: { value: string; label: string; className?: string }) {
+  const svg = await QRCode.toString(value, {
     type: "svg",
     margin: 0,
     errorCorrectionLevel: "M",
     color: { dark: "#10152c", light: "#ffffff" },
   });
 
-  return <div role="img" aria-label={`QR code for check-in code ${code}`} className={className} dangerouslySetInnerHTML={{ __html: svg }} />;
+  return <div role="img" aria-label={label} className={className} dangerouslySetInnerHTML={{ __html: svg }} />;
 }

@@ -34,6 +34,14 @@ class FrontendLinks
         return self::base().'/reset-password?'.http_build_query(['token' => $token, 'email' => $user->getEmailForPasswordReset()]);
     }
 
+    /**
+     * The link on a location's self check-in poster.
+     */
+    public static function selfCheckIn(string $token): string
+    {
+        return self::base().'/check-in/'.$token;
+    }
+
     public static function order(string $reference): string
     {
         return self::base().'/dashboard/orders/'.$reference;

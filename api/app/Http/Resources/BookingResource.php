@@ -51,6 +51,7 @@ class BookingResource extends JsonResource
             'hold_active' => $this->status === BookingStatus::Held && $this->isOccupying(),
             'check_in_code' => $codeVisible ? $this->check_in_code : null,
             'checked_in_at' => $this->checked_in_at?->toIso8601String(),
+            'checked_in_via' => $this->checked_in_via,
             'space_name' => $this->space_name,
             'location_name' => $this->location_name,
             'cancellation_policy' => $this->policy_snapshot['summary'] ?? [],

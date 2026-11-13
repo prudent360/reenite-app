@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ArrowLeft, Plus } from "lucide-react";
 import { LocationForm } from "@/components/admin/workspace/location-form";
+import { SelfCheckInCard } from "@/components/admin/workspace/self-check-in-card";
 import { ButtonLink } from "@/components/ui/button";
 import { Badge, Card, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/loader";
@@ -40,6 +41,9 @@ async function Editor({ id }: { id: string }) {
     <div className="space-y-6">
       <title>{`${location.name} | Reenite Admin`}</title>
       <LocationForm key={location.id} location={location} />
+      <Suspense fallback={<Skeleton className="h-64 rounded-2xl" />}>
+        <SelfCheckInCard locationId={location.id} />
+      </Suspense>
       <Card className="overflow-hidden">
         <CardHeader
           title={`Spaces at ${location.name}`}

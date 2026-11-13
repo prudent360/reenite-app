@@ -504,7 +504,7 @@ function Intro() {
 const stockSpacePhotos: Record<string, string> = {
   "hot-desk": "/images/home/coworking-lagos.jpg",
   "private-office": "/images/home/private-office.jpg",
-  "meeting-room": "/images/home/team-meeting.jpg",
+  "meeting-room": "/images/home/meeting-room.jpg",
   "podcast-studio": "/images/home/podcast-studio.jpg",
 };
 

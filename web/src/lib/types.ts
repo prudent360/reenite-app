@@ -526,6 +526,8 @@ export type Booking = {
   hold_active: boolean;
   check_in_code: string | null;
   checked_in_at: string | null;
+  /** "desk" when staff checked them in, "self" from the reception poster. */
+  checked_in_via?: "desk" | "self" | null;
   space_name: string;
   location_name: string;
   cancellation_policy: string[];
@@ -1001,3 +1003,32 @@ export type AppNotification = {
 };
 
 export type NotificationFeed = { data: AppNotification[]; unread_count: number };
+
+/** A booking as shown on a location's self check-in page. */
+export type SelfCheckInBooking = {
+  reference: string;
+  space_name: string;
+  seats: string[];
+  people: number;
+  status: BookingStatus;
+  starts_at: string;
+  ends_at: string;
+  checked_in_at: string | null;
+  opens_at: string;
+  can_check_in: boolean;
+};
+
+export type SelfCheckInPage = {
+  location: { name: string; address: string; city: string };
+  signed_in: boolean;
+  customer_name: string | null;
+  opens_minutes_before: number;
+  bookings: SelfCheckInBooking[];
+};
+
+export type SelfCheckInSettings = {
+  location_id: number;
+  location_name: string;
+  enabled: boolean;
+  url: string;
+};

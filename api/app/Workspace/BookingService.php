@@ -436,16 +436,42 @@ class BookingService
         return 0;
     }
 
+    /**
+     * Customers checking themselves in from the poster at reception may do so this many minutes
+     * before their start. Staff at the desk can check people in up to two hours early.
+     */
+    public const SELF_CHECK_IN_MINUTES = 30;
+
     public function checkIn(Booking $booking, User $staff): Booking
     {
-        abort_if($booking->status === BookingStatus::CheckedIn, 422, 'Already checked in at '.$booking->checked_in_at?->timezone((string) config('app.display_timezone'))->format('g:ia').'.');
-        abort_unless($booking->status === BookingStatus::Confirmed, 422, 'Only confirmed bookings can be checked in. This one is '.mb_strtolower($booking->status->label()).'.');
-        abort_if($booking->ends_at->isPast(), 422, 'This booking has already ended.');
-        abort_if($booking->starts_at->isAfter(now()->addHours(2)), 422, 'Check-in opens two hours before the booking starts ('.$booking->starts_at->timezone((string) config('app.display_timezone'))->format('j M, g:ia').').');
+        $this->assertCanCheckIn($booking, 120);
 
-        $booking->update(['status' => BookingStatus::CheckedIn, 'checked_in_at' => now(), 'checked_in_by' => $staff->id]);
+        $booking->update(['status' => BookingStatus::CheckedIn, 'checked_in_at' => now(), 'checked_in_by' => $staff->id, 'checked_in_via' => 'desk']);
 
         return $booking;
+    }
+
+    /**
+     * The customer checking themselves in at the location's self check-in link.
+     */
+    public function selfCheckIn(Booking $booking): Booking
+    {
+        $this->assertCanCheckIn($booking, self::SELF_CHECK_IN_MINUTES);
+
+        $booking->update(['status' => BookingStatus::CheckedIn, 'checked_in_at' => now(), 'checked_in_by' => null, 'checked_in_via' => 'self']);
+
+        return $booking;
+    }
+
+    private function assertCanCheckIn(Booking $booking, int $opensMinutesBefore): void
+    {
+        $timezone = (string) config('app.display_timezone');
+        abort_if($booking->status === BookingStatus::CheckedIn, 422, 'Already checked in at '.$booking->checked_in_at?->timezone($timezone)->format('g:ia').'.');
+        abort_unless($booking->status === BookingStatus::Confirmed, 422, 'Only confirmed bookings can be checked in. This one is '.mb_strtolower($booking->status->label()).'.');
+        abort_if($booking->ends_at->isPast(), 422, 'This booking has already ended.');
+
+        $window = $opensMinutesBefore === 120 ? 'two hours' : "{$opensMinutesBefore} minutes";
+        abort_if($booking->starts_at->copy()->subMinutes($opensMinutesBefore)->isFuture(), 422, "Check-in opens {$window} before the booking starts (".$booking->starts_at->timezone($timezone)->format('j M, g:ia').').');
     }
 
     /**
