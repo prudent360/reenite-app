@@ -70,20 +70,20 @@ export const customerNav: NavSection[] = [
     items: [{ href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, tab: true, keywords: "home overview" }],
   },
   {
+    title: "Workspace",
+    items: [
+      { href: "/dashboard/workspace", label: "My bookings", icon: CalendarCheck, tab: true, keywords: "bookings pass check-in code passes membership" },
+      { href: "/dashboard/workspace/book", label: "Book a space", icon: Armchair, keywords: "desk office studio event booking" },
+      { href: "/dashboard/mailbox", label: "Mailbox", icon: Mailbox, keywords: "virtual office mail letters parcels business address scan forward" },
+    ],
+  },
+  {
     title: "My business",
     items: [
       { href: "/dashboard/businesses", label: "My Businesses", icon: Building2, keywords: "company cac compliance calendar deadlines health score vat paye annual returns" },
       { href: "/dashboard/consultations", label: "Consultations", icon: CalendarClock, keywords: "advice officer meeting call tax legal book session" },
       { href: "/dashboard/services", label: "Services", icon: Store, tab: true, keywords: "register tax website order" },
       { href: "/dashboard/orders", label: "Orders", icon: ClipboardList, tab: true, keywords: "track filing progress" },
-    ],
-  },
-  {
-    title: "Workspace",
-    items: [
-      { href: "/dashboard/workspace", label: "My bookings", icon: CalendarCheck, tab: true, keywords: "bookings pass check-in code passes membership" },
-      { href: "/dashboard/workspace/book", label: "Book a space", icon: Armchair, keywords: "desk office studio event booking" },
-      { href: "/dashboard/mailbox", label: "Mailbox", icon: Mailbox, keywords: "virtual office mail letters parcels business address scan forward" },
     ],
   },
   {
