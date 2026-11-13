@@ -25,6 +25,9 @@ export const metadata: Metadata = {
   description:
     "Hot desks, private offices, a podcast studio and event halls at 162 Oron Road, Uyo. Plus business registration, tax, websites and a virtual address, handled by the Reenite team.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
+  applicationName: "Reenite",
+  appleWebApp: { title: "Reenite", capable: true, statusBarStyle: "default" },
+  icons: { apple: "/icons/apple-touch-icon.png" },
 };
 
 export const viewport: Viewport = {
