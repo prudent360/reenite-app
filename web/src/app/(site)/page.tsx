@@ -651,7 +651,7 @@ function ServiceAreas() {
   return (
     <section id="services" className="scroll-mt-20 bg-navy-950 text-white">
       <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
-        <div className="grid gap-12 lg:grid-cols-[1fr_1.6fr]">
+        <div className="grid gap-12 lg:grid-cols-[1fr_1.6fr] lg:items-center">
           <div data-reveal="">
             <p className="font-semibold text-brand-400">New at Reenite</p>
             <h2 className="mt-3 text-3xl font-semibold leading-[1.15] tracking-tight sm:text-[2.6rem]">
@@ -666,22 +666,28 @@ function ServiceAreas() {
             </ButtonLink>
           </div>
 
-          <div data-stagger="" className="grid gap-4 sm:grid-cols-3">
+          <div data-stagger="" className="divide-y divide-white/10 overflow-hidden rounded-[20px] border border-white/10 bg-white/[0.03]">
             {services.map((pillar) => (
-              <Link key={pillar.slug} href={pillar.href} className="group flex flex-col rounded-[16px] border border-white/10 bg-white/5 p-6 transition-colors hover:bg-white/10">
-                <pillar.icon className="size-7 text-brand-500" />
-                <h3 className="mt-5 text-lg font-bold">{pillar.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-navy-200">{pillar.summary}</p>
-                <ul className="mt-5 flex-1 space-y-2.5 text-sm text-white/90">
-                  {pillar.items.map((item) => (
-                    <li key={item} className="flex items-start gap-2.5">
-                      <Check className="mt-0.5 size-4 shrink-0 text-brand-500" /> {item}
-                    </li>
-                  ))}
-                </ul>
-                <span className="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-400">
-                  See prices <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+              <Link key={pillar.slug} href={pillar.href} className="group flex flex-col gap-4 p-6 transition-colors hover:bg-white/[0.06] sm:flex-row sm:gap-5 sm:p-7">
+                <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-brand-500/15 text-brand-500 sm:size-12">
+                  <pillar.icon className="size-6" />
                 </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                    <h3 className="text-lg font-bold">{pillar.title}</h3>
+                    <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-400">
+                      See prices <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm leading-relaxed text-navy-200">{pillar.summary}</p>
+                  <ul className="mt-4 flex flex-wrap gap-2">
+                    {pillar.items.map((item) => (
+                      <li key={item} className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[13px] text-white/85">
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </Link>
             ))}
           </div>

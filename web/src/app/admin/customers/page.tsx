@@ -2,16 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { ChevronLeft, ChevronRight, Search, Users } from "lucide-react";
-import { CustomerStatusButton } from "@/components/admin/customer-status-button";
+import { CustomerTable } from "@/components/admin/customers/customer-table";
 import { PageHeader } from "@/components/app/page-header";
-import { Avatar } from "@/components/ui/avatar";
 import { buttonClasses } from "@/components/ui/button";
-import { Badge, Card, EmptyState } from "@/components/ui/card";
+import { Card, EmptyState } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/loader";
 import { api } from "@/lib/api";
 import { can, requireStaff } from "@/lib/session";
 import type { Paginated, User } from "@/lib/types";
-import { cn, formatDate } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Customers" };
 
@@ -20,20 +19,20 @@ export default function CustomersPage({ searchParams }: PageProps<"/admin/custom
     <>
       <PageHeader title="Customers" description="Everyone who has signed up for a Reenite account." />
       <Suspense fallback={<TableSkeleton />}>
-        <CustomerTable searchParams={searchParams} />
+        <CustomerList searchParams={searchParams} />
       </Suspense>
     </>
   );
 }
 
-async function CustomerTable({ searchParams }: { searchParams: PageProps<"/admin/customers">["searchParams"] }) {
+async function CustomerList({ searchParams }: { searchParams: PageProps<"/admin/customers">["searchParams"] }) {
   const viewer = await requireStaff("customers.view");
   const params = await searchParams;
   const search = typeof params.q === "string" ? params.q : "";
   const status = params.status === "active" || params.status === "suspended" ? params.status : "";
   const page = Math.max(1, Number(params.page) || 1);
 
-  const query = new URLSearchParams({ page: String(page), per_page: "15" });
+  const query = new URLSearchParams({ page: String(page), per_page: "25" });
   if (search) query.set("search", search);
   if (status) query.set("status", status);
 
@@ -76,48 +75,7 @@ async function CustomerTable({ searchParams }: { searchParams: PageProps<"/admin
       {customers.length === 0 ? (
         <EmptyState icon={Users} title="No customers found" description={search ? `Nothing matches "${search}".` : "New sign-ups will appear here."} />
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] text-left text-sm">
-            <thead className="bg-surface-muted text-xs font-semibold uppercase tracking-wider text-muted">
-              <tr>
-                <th className="px-5 py-3">Customer</th>
-                <th className="px-5 py-3">Phone</th>
-                <th className="px-5 py-3">Email</th>
-                <th className="px-5 py-3">Status</th>
-                <th className="px-5 py-3">Joined</th>
-                {canManage && <th className="px-5 py-3 text-right">Actions</th>}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {customers.map((customer) => (
-                <tr key={customer.id} className="hover:bg-surface-muted/50">
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-3">
-                      <Avatar name={customer.name} className="size-8" />
-                      <div className="min-w-0">
-                        <p className="truncate font-semibold">{customer.name}</p>
-                        <p className="truncate text-xs text-muted">{customer.email}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3.5 text-muted">{customer.phone ?? "—"}</td>
-                  <td className="px-5 py-3.5">
-                    {customer.email_verified ? <Badge tone="success">Verified</Badge> : <Badge tone="warning">Unverified</Badge>}
-                  </td>
-                  <td className="px-5 py-3.5">
-                    {customer.status === "active" ? <Badge tone="info">Active</Badge> : <Badge tone="danger">Suspended</Badge>}
-                  </td>
-                  <td className="px-5 py-3.5 text-muted">{formatDate(customer.created_at)}</td>
-                  {canManage && (
-                    <td className="px-5 py-3.5 text-right">
-                      <CustomerStatusButton userId={customer.id} name={customer.name} status={customer.status} />
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <CustomerTable key={customers.map((customer) => customer.id).join(",")} customers={customers} canManage={canManage} />
       )}
 
       {meta.last_page > 1 && (
