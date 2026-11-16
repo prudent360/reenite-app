@@ -97,6 +97,14 @@ class FrontendLinks
         return self::base().'/dashboard/mailbox';
     }
 
+    /**
+     * The public page that confirms a proof-of-address letter is genuine.
+     */
+    public static function addressVerification(string $code): string
+    {
+        return self::base().'/verify/address/'.$code;
+    }
+
     public static function adminMail(): string
     {
         return self::base().'/admin/mail';

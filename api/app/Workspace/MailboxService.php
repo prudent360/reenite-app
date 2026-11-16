@@ -3,10 +3,12 @@
 namespace App\Workspace;
 
 use App\Enums\EmailTemplateKey;
+use App\Enums\InvoiceStatus;
 use App\Models\CustomerMembership;
 use App\Models\Location;
 use App\Models\Mailbox;
 use App\Models\MailItem;
+use App\Models\MembershipPlan;
 use App\Models\User;
 use App\Notifications\MailNotification;
 use App\Notifications\StaffAlertNotification;
@@ -48,6 +50,8 @@ class MailboxService
                 $mailbox->update([
                     'status' => Mailbox::ACTIVE,
                     'customer_membership_id' => $membership->id,
+                    // A fresh application can change the name; a renewal carries none and keeps it.
+                    'business_name' => $membership->mailbox_name ?: $mailbox->business_name,
                     'active_until' => $mailbox->status === Mailbox::ACTIVE && $mailbox->active_until === null ? null : $until,
                 ]);
 
@@ -58,11 +62,39 @@ class MailboxService
                 'user_id' => $membership->user_id,
                 'location_id' => $locationId,
                 'customer_membership_id' => $membership->id,
-                'business_name' => $membership->user->name,
+                'business_name' => $membership->mailbox_name ?: $membership->user->name,
                 'status' => Mailbox::ACTIVE,
                 'active_until' => $until,
             ]);
         });
+    }
+
+    /**
+     * A customer applies for a virtual address: a membership that includes a mailbox, with the name
+     * they want on the address. They pay the invoice, and the mailbox opens (see openForMembership).
+     * Applying again before paying updates the same application instead of raising a second invoice.
+     */
+    public function apply(User $customer, MembershipPlan $plan, string $name): CustomerMembership
+    {
+        abort_unless($plan->is_active && $plan->mailbox_location_id, 422, 'This plan does not include a virtual address.');
+
+        $existing = Mailbox::where('user_id', $customer->id)->where('location_id', $plan->mailbox_location_id)->with('location')->first();
+        if ($existing?->isActive()) {
+            throw ValidationException::withMessages(['membership_plan_id' => 'You already have a virtual address at '.$existing->location->name.'. You can renew it from your plans.']);
+        }
+
+        $pending = CustomerMembership::where('user_id', $customer->id)
+            ->where('membership_plan_id', $plan->id)
+            ->where('status', CustomerMembership::PENDING)
+            ->whereNull('renewal_of_id')
+            ->whereHas('invoice', fn ($invoice) => $invoice->where('status', InvoiceStatus::Unpaid->value))
+            ->latest('id')
+            ->first();
+
+        $membership = $pending ?? app(PlanService::class)->buyMembership($customer, $plan, evenIfBookingPaused: true);
+        $membership->update(['mailbox_name' => $name]);
+
+        return $membership;
     }
 
     /**

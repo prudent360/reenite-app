@@ -66,6 +66,9 @@ return [
 
     'frontend_url' => env('FRONTEND_URL', 'http://localhost:3000'),
 
+    // The registered company name, printed on letters such as the proof of address.
+    'legal_name' => env('APP_LEGAL_NAME', 'Reenite Spaces Limited'),
+
     'display_timezone' => env('APP_TIMEZONE_DISPLAY', 'Africa/Lagos'),
 
     /*

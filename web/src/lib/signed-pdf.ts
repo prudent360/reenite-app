@@ -21,7 +21,7 @@ const when = new Intl.DateTimeFormat("en-NG", { dateStyle: "long", timeStyle: "s
  * Standard PDF fonts only cover Latin-1, so names like "Adébáyọ̀" are drawn as "Adebayo" here;
  * the signature record itself keeps the exact spelling.
  */
-function latin(text: string): string {
+export function latin(text: string): string {
   return text
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -29,7 +29,7 @@ function latin(text: string): string {
 }
 
 /** Wraps text to a width, returning the lines. */
-function wrap(text: string, font: PDFFont, size: number, width: number): string[] {
+export function wrap(text: string, font: PDFFont, size: number, width: number): string[] {
   const lines: string[] = [];
   let line = "";
   for (const word of latin(text).split(/\s+/)) {

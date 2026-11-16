@@ -185,4 +185,65 @@ class MailboxTest extends TestCase
 
         $this->actingAs($this->frontDesk)->postJson("/api/v1/admin/mail/mailboxes/{$mailbox->id}/items", ['kind' => 'letter'])->assertUnprocessable();
     }
+
+    public function test_a_customer_applies_for_a_virtual_address_and_gets_a_letter_anyone_can_check(): void
+    {
+        $plan = MembershipPlan::factory()->create(['name' => 'Virtual Office', 'price' => 1500000, 'mailbox_location_id' => $this->location->id]);
+        MembershipPlan::factory()->create(['name' => 'Desk Club', 'mailbox_location_id' => null]);
+
+        $this->actingAs($this->customer)->getJson('/api/v1/mailbox/plans')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.name', 'Virtual Office')
+            ->assertJsonPath('data.0.location.address', '12 Oron Road');
+
+        $invoiceId = $this->actingAs($this->customer)->postJson('/api/v1/mailbox/apply', ['membership_plan_id' => $plan->id, 'business_name' => 'Obi Foods Ltd'])
+            ->assertCreated()->json('invoice_id');
+        $this->assertSame(0, Mailbox::count());
+
+        // Changing their mind before paying updates the same application.
+        $this->actingAs($this->customer)->postJson('/api/v1/mailbox/apply', ['membership_plan_id' => $plan->id, 'business_name' => 'Obi Foods Limited'])
+            ->assertCreated()->assertJsonPath('invoice_id', $invoiceId);
+        $membership = CustomerMembership::sole();
+
+        app(PlanService::class)->activate($membership);
+        $mailbox = Mailbox::sole();
+        $this->assertSame('Obi Foods Limited', $mailbox->business_name);
+        $this->assertMatchesRegularExpression('/^[A-Z0-9]{10}$/', $mailbox->verification_code);
+
+        $this->actingAs($this->customer)->getJson("/api/v1/mailbox/{$mailbox->id}/certificate")
+            ->assertOk()
+            ->assertJsonPath('data.holder', 'Obi Foods Limited')
+            ->assertJsonPath('data.certificate_number', 'RN-0001/'.$mailbox->verification_code)
+            ->assertJsonPath('data.address_lines', ['Obi Foods Limited', 'Mailbox RN-0001', '12 Oron Road', 'Uyo, Akwa Ibom'])
+            ->assertJsonPath('data.issuer.name', 'Reenite Spaces Limited')
+            ->assertJsonPath('data.verify_url', config('app.frontend_url').'/verify/address/'.$mailbox->verification_code);
+
+        // Someone else cannot download it, and a second address at the same place is refused.
+        $this->actingAs(User::factory()->create())->getJson("/api/v1/mailbox/{$mailbox->id}/certificate")->assertNotFound();
+        $this->actingAs($this->customer)->postJson('/api/v1/mailbox/apply', ['membership_plan_id' => $plan->id, 'business_name' => 'Another'])
+            ->assertUnprocessable()->assertJsonValidationErrors('membership_plan_id');
+
+        // A bank or registry checks the letter without signing in.
+        $this->app['auth']->forgetGuards();
+        $this->getJson('/api/v1/address-verifications/'.strtolower($mailbox->verification_code))
+            ->assertOk()
+            ->assertJsonPath('data.state', 'active')
+            ->assertJsonPath('data.holder', 'Obi Foods Limited')
+            ->assertJsonMissingPath('data.customer');
+        $this->getJson('/api/v1/address-verifications/NOSUCHCODE')->assertNotFound();
+
+        // Once the paid period ends the letter stops being issued and the check says so.
+        $this->travelTo($mailbox->active_until->addDay());
+        $this->getJson('/api/v1/address-verifications/'.$mailbox->verification_code)->assertJsonPath('data.state', 'lapsed');
+        $this->actingAs($this->customer)->getJson("/api/v1/mailbox/{$mailbox->id}/certificate")->assertUnprocessable();
+    }
+
+    public function test_applying_needs_a_plan_that_includes_an_address_and_a_name(): void
+    {
+        $plan = MembershipPlan::factory()->create(['mailbox_location_id' => null]);
+
+        $this->actingAs($this->customer)->postJson('/api/v1/mailbox/apply', ['membership_plan_id' => $plan->id, 'business_name' => ''])
+            ->assertUnprocessable()->assertJsonValidationErrors(['membership_plan_id' => 'Choose one of the virtual address plans.', 'business_name']);
+    }
 }

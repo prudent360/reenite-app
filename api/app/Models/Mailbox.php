@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 /**
  * Virtual office: a customer's mailbox at one of our locations. They use the location's address
@@ -37,8 +38,28 @@ class Mailbox extends Model
     protected static function booted(): void
     {
         static::created(function (Mailbox $mailbox) {
-            $mailbox->forceFill(['number' => sprintf('RN-%04d', $mailbox->id)])->saveQuietly();
+            $mailbox->forceFill(['number' => sprintf('RN-%04d', $mailbox->id), 'verification_code' => self::newVerificationCode()])->saveQuietly();
         });
+    }
+
+    /**
+     * The code on the proof-of-address letter. Random, so nobody can guess another customer's.
+     */
+    public static function newVerificationCode(): string
+    {
+        do {
+            $code = strtoupper(Str::random(10));
+        } while (self::where('verification_code', $code)->exists());
+
+        return $code;
+    }
+
+    /**
+     * The letter's reference: the mailbox number and the code, e.g. RN-0012/7QK2M9XWPA.
+     */
+    public function certificateNumber(): string
+    {
+        return $this->number.'/'.$this->verification_code;
     }
 
     /**

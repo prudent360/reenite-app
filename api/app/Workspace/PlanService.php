@@ -55,9 +55,10 @@ class PlanService
         });
     }
 
-    public function buyMembership(User $customer, MembershipPlan $plan, ?CustomerMembership $renewalOf = null): CustomerMembership
+    public function buyMembership(User $customer, MembershipPlan $plan, ?CustomerMembership $renewalOf = null, bool $evenIfBookingPaused = false): CustomerMembership
     {
-        if (! $renewalOf) {
+        // A virtual address is not a space booking, so it stays on sale while online booking is paused.
+        if (! $renewalOf && ! $evenIfBookingPaused) {
             $this->bookings->assertOpen();
         }
         abort_unless($plan->is_active, 422, 'This membership is not available right now.');

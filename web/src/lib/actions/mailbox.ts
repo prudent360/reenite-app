@@ -17,6 +17,16 @@ async function run(call: () => Promise<unknown>, message: string): Promise<FormS
 
 /* ---------- Customer ---------- */
 
+/** Applies for a virtual address. Returns the invoice to pay; the address is issued once it's paid. */
+export async function applyForAddress(planId: number, businessName: string): Promise<FormState & { invoiceId?: number }> {
+  try {
+    const result = await api<{ invoice_id: number }>("/mailbox/apply", { method: "POST", body: { membership_plan_id: planId, business_name: businessName } });
+    return { ok: true, invoiceId: result.invoice_id };
+  } catch (error) {
+    return toFormState(error);
+  }
+}
+
 const requestMessages: Record<MailAction, string> = {
   collect: "We'll keep it at the front desk for you to collect.",
   forward: "We'll forward it and let you know when it's sent.",

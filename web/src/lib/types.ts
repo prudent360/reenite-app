@@ -742,6 +742,8 @@ export type Mailbox = {
   id: number;
   number: string;
   business_name: string;
+  /** The code on the proof-of-address letter. */
+  verification_code?: string | null;
   state: "active" | "lapsed" | "closed";
   status: "active" | "closed";
   active_until: string | null;
@@ -754,6 +756,44 @@ export type Mailbox = {
   customer?: { id: number; name: string; email: string; phone: string | null };
   items?: MailItem[];
   created_at: string | null;
+};
+
+/** A membership plan that comes with a virtual address. */
+export type AddressPlan = {
+  id: number;
+  name: string;
+  description: string | null;
+  price: number;
+  billing_period: string;
+  perks: string[];
+  location: { name: string; address: string; city: string; state: string };
+};
+
+/** What the proof-of-address letter prints. */
+export type AddressCertificate = {
+  certificate_number: string;
+  holder: string;
+  account_holder: string;
+  mailbox_number: string;
+  address_lines: string[];
+  issued_on: string;
+  valid_from: string | null;
+  valid_until: string | null;
+  verification_code: string;
+  verify_url: string;
+  issuer: { name: string; address: string; phone: string | null; email: string | null };
+  signatory: { name: string; title: string | null; signature: string } | null;
+};
+
+/** What the public check page shows for a letter's code. */
+export type AddressVerification = {
+  state: "active" | "lapsed" | "closed";
+  certificate_number: string;
+  holder: string;
+  address_lines: string[];
+  valid_from: string | null;
+  valid_until: string | null;
+  issuer: string;
 };
 
 /* ---------- Businesses and compliance ---------- */

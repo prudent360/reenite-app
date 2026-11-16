@@ -69,6 +69,8 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->name('v1.')->group(function () {
     Route::get('catalogue', [CatalogueController::class, 'index'])->name('catalogue.index');
     Route::get('catalogue/services/{slug}', [CatalogueController::class, 'show'])->name('catalogue.services.show');
+    // Anyone holding a proof-of-address letter can check it.
+    Route::get('address-verifications/{code}', [MailboxController::class, 'verify'])->middleware('throttle:30,1')->where('code', '[A-Za-z0-9]{6,16}')->name('address-verifications.show');
     Route::get('blog', [BlogController::class, 'index'])->name('blog.index');
     Route::get('blog/{slug}', [BlogController::class, 'show'])->name('blog.show');
     Route::get('workspace', [WorkspaceController::class, 'index'])->name('workspace.index');
@@ -161,6 +163,9 @@ Route::prefix('v1')->name('v1.')->group(function () {
 
         Route::prefix('mailbox')->name('mailbox.')->group(function () {
             Route::get('/', [MailboxController::class, 'index'])->name('index');
+            Route::get('plans', [MailboxController::class, 'plans'])->name('plans');
+            Route::post('apply', [MailboxController::class, 'apply'])->middleware('throttle:10,1')->name('apply');
+            Route::get('{mailbox}/certificate', [MailboxController::class, 'certificate'])->whereNumber('mailbox')->name('certificate');
             Route::get('items/{item}/scan', [MailboxController::class, 'scan'])->name('items.scan');
             Route::post('items/{item}/request', [MailboxController::class, 'request'])->middleware('throttle:20,1')->name('items.request');
             Route::delete('items/{item}/request', [MailboxController::class, 'cancelRequest'])->name('items.request.destroy');

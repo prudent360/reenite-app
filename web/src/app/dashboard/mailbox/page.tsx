@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { FileText, Mail, Mailbox as MailboxIcon, Package, ScrollText } from "lucide-react";
+import { Download, FileCheck2, FileText, Mail, Mailbox as MailboxIcon, Package, ScrollText } from "lucide-react";
 import { PageHeader } from "@/components/app/page-header";
 import { CopyAddress } from "@/components/mailbox/copy-address";
 import { MailItemActions } from "@/components/mailbox/mail-item-actions";
-import { ButtonLink } from "@/components/ui/button";
+import { ButtonLink, buttonClasses } from "@/components/ui/button";
 import { Alert, Badge, Card, CardHeader, EmptyState } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/loader";
 import { api } from "@/lib/api";
@@ -37,8 +37,8 @@ async function Mailboxes() {
         <EmptyState
           icon={MailboxIcon}
           title="No virtual office yet"
-          description="Get a business address at a Reenite location. We receive your letters and parcels, email you when something arrives, and collect, forward, scan or shred it as you ask."
-          action={<ButtonLink href="/dashboard/workspace">See memberships</ButtonLink>}
+          description="Get a business address at a Reenite location, with a proof-of-address letter for your bank, CAC and other applications. We also receive your letters and parcels, and scan, forward or hold them as you ask."
+          action={<ButtonLink href="/dashboard/mailbox/apply">Apply for a virtual address</ButtonLink>}
         />
       </Card>
     );
@@ -85,6 +85,27 @@ function MailboxCard({ mailbox }: { mailbox: Mailbox }) {
           </div>
           {mailbox.state !== "closed" && <CopyAddress lines={lines} />}
         </div>
+        {mailbox.state === "active" && (
+          <div className="flex flex-col gap-4 border-t border-border bg-surface-muted/50 p-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            <div className="flex gap-3">
+              <FileCheck2 className="mt-0.5 size-5 shrink-0 text-brand-600" />
+              <p className="text-sm text-muted">
+                <span className="block font-semibold text-foreground">Proof of address</span>
+                A signed letter for bank, CAC and other applications. Anyone can confirm it with the QR code on it.
+              </p>
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2">
+              {mailbox.verification_code && (
+                <a href={`/verify/address/${mailbox.verification_code}`} target="_blank" rel="noreferrer" className="text-sm font-semibold text-muted underline-offset-4 hover:text-foreground hover:underline">
+                  See the check page
+                </a>
+              )}
+              <a href={`/files/mailbox/${mailbox.id}/certificate`} className={buttonClasses({ size: "sm" })}>
+                <Download className="size-4" /> Download letter
+              </a>
+            </div>
+          </div>
+        )}
         {mailbox.state === "lapsed" && (
           <div className="border-t border-border p-5 sm:px-6">
             <Alert tone="warning" title="Renew to keep this address">

@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * A membership a customer bought. While active it takes its discount off every booking.
  */
-#[Fillable(['user_id', 'membership_plan_id', 'invoice_id', 'name', 'discount_percent', 'billing_period', 'status', 'starts_at', 'ends_at'])]
+#[Fillable(['user_id', 'membership_plan_id', 'invoice_id', 'name', 'mailbox_name', 'discount_percent', 'billing_period', 'status', 'starts_at', 'ends_at'])]
 class CustomerMembership extends Model
 {
     /** @use HasFactory<CustomerMembershipFactory> */

@@ -11,7 +11,7 @@ import { cn, formatNaira } from "@/lib/utils";
 
 type Plan = { name: string; price: number; featured?: boolean; features: string[]; note: string };
 
-/** `signUp` is where each plan is bought: both plan types are sold on the booking site for now. */
+/** `signUp` is where each plan is bought. */
 type PlanTab = { key: "membership" | "virtual-address"; label: string; title: string; intro: string; plans: Plan[]; badge: string; signUp: string };
 
 const tabs: PlanTab[] = [
@@ -28,7 +28,8 @@ const tabs: PlanTab[] = [
     key: "virtual-address",
     label: "Virtual address",
     title: "A proper address for your business",
-    signUp: `${bookingUrl}/#virtual-address`,
+    // Applied for on this site, from the dashboard (visitors are asked to sign in first).
+    signUp: "/dashboard/mailbox/apply",
     intro: "A professional home for your business, without paying for an office.",
     badge: "Most popular",
     plans: virtualAddressPlans.map((plan) => ({ ...plan, note: `Best for ${plan.bestFor[0]!.toLowerCase()}${plan.bestFor.slice(1)}` })),

@@ -22,6 +22,7 @@ class MailboxResource extends JsonResource
             'id' => $this->id,
             'number' => $this->number,
             'business_name' => $this->business_name,
+            'verification_code' => $this->verification_code,
             // active | lapsed (paid period over) | closed
             'state' => $this->state(),
             'status' => $this->status,
