@@ -100,6 +100,16 @@ class MailboxController extends Controller
     }
 
     /**
+     * Deletes a mailbox and its mail history. Managers only (the route also needs customers.manage).
+     */
+    public function destroy(Mailbox $mailbox): Response
+    {
+        $this->mailboxes->delete($mailbox);
+
+        return response()->noContent();
+    }
+
+    /**
      * Mail at the front desk across all mailboxes; customer requests first.
      */
     public function queue(Request $request): AnonymousResourceCollection

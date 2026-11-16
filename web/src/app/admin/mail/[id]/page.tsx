@@ -6,7 +6,7 @@ import { ArrowLeft, FileText, Mail } from "lucide-react";
 import { PageHeader } from "@/components/app/page-header";
 import { MailDeskActions } from "@/components/admin/mail/mail-desk-actions";
 import { LogMailForm } from "@/components/admin/mail/log-mail-form";
-import { EditMailboxForm } from "@/components/admin/mail/mailbox-forms";
+import { DeleteMailbox, EditMailboxForm } from "@/components/admin/mail/mailbox-forms";
 import { Badge, Card, CardHeader, EmptyState } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/loader";
 import { ApiError, api } from "@/lib/api";
@@ -33,7 +33,7 @@ export default function MailboxAdminPage({ params }: PageProps<"/admin/mail/[id]
 }
 
 async function MailboxDetail({ id }: { id: string }) {
-  await requireStaff("mail.manage");
+  const staff = await requireStaff("mail.manage");
   let mailbox: Mailbox;
   try {
     ({ data: mailbox } = await api<{ data: Mailbox }>(`/admin/mail/mailboxes/${encodeURIComponent(id)}`));
@@ -100,6 +100,8 @@ async function MailboxDetail({ id }: { id: string }) {
               <EditMailboxForm mailbox={mailbox} />
             </div>
           </Card>
+          {/* Deleting wipes records, so it's for managers; the front desk closes mailboxes instead. */}
+          {(staff.permissions ?? []).includes("customers.manage") && <DeleteMailbox mailbox={mailbox} />}
         </div>
       </div>
     </>

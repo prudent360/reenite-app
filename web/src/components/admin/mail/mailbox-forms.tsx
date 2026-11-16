@@ -2,9 +2,9 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Search, X } from "lucide-react";
+import { Search, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
-import { openMailbox, searchMailCustomers, updateMailbox } from "@/lib/actions/mailbox";
+import { deleteMailbox, openMailbox, searchMailCustomers, updateMailbox } from "@/lib/actions/mailbox";
 import type { CustomerOption, Location, Mailbox } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { SelectField, TextField, TextareaField } from "@/components/ui/form";
@@ -177,5 +177,61 @@ export function EditMailboxForm({ mailbox }: { mailbox: Mailbox }) {
         {saving ? <DotLoader className="text-current" /> : "Save"}
       </Button>
     </form>
+  );
+}
+
+/**
+ * Deleting is for mistakes and test mailboxes: it wipes the mail history and the customer's
+ * proof-of-address code. Closing (in the form above) is the everyday way to stop an address.
+ */
+export function DeleteMailbox({ mailbox }: { mailbox: Mailbox }) {
+  const router = useRouter();
+  const [confirming, setConfirming] = useState(false);
+  const [deleting, startDeleting] = useTransition();
+
+  if (!confirming) {
+    return (
+      <button type="button" onClick={() => setConfirming(true)} className="inline-flex items-center gap-2 text-sm font-semibold text-danger hover:underline">
+        <Trash2 className="size-4" /> Delete this mailbox
+      </button>
+    );
+  }
+
+  return (
+    <div className="space-y-3 rounded-xl border border-danger/30 bg-danger-soft p-4">
+      <p className="text-sm font-semibold text-danger">
+        Delete {mailbox.number} for {mailbox.business_name}?
+      </p>
+      <ul className="list-disc space-y-1 pl-5 text-sm text-foreground">
+        <li>The address, its mail history and any scans are removed for good.</li>
+        <li>Their proof-of-address letter stops verifying on the website.</li>
+        <li>Nothing is refunded. Their membership, if any, is not cancelled.</li>
+        <li>They can apply again later, and will get a new mailbox number.</li>
+      </ul>
+      <p className="text-sm text-muted">To stop the address but keep its records, set the status to Closed instead.</p>
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          variant="danger"
+          disabled={deleting}
+          onClick={() =>
+            startDeleting(async () => {
+              const result = await deleteMailbox(mailbox.id);
+              if (result.ok) {
+                toast.success(result.message);
+                router.push("/admin/mail?view=mailboxes");
+              } else {
+                toast.error(result.message ?? "We couldn't delete this mailbox.");
+              }
+            })
+          }
+        >
+          {deleting ? <DotLoader className="text-current" /> : "Yes, delete it"}
+        </Button>
+        <Button type="button" variant="outline" disabled={deleting} onClick={() => setConfirming(false)}>
+          Keep it
+        </Button>
+      </div>
+    </div>
   );
 }

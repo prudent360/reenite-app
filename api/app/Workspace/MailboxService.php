@@ -216,6 +216,27 @@ class MailboxService
         return $item;
     }
 
+    /**
+     * Removes a mailbox for good, with its mail history and scans. The customer can apply afresh
+     * afterwards and gets a new number; the old proof-of-address code stops matching anything.
+     * Refused while mail is still at the front desk, so nothing physical is left without an owner.
+     * To stop an address but keep its history, close it instead.
+     */
+    public function delete(Mailbox $mailbox): void
+    {
+        $waiting = $mailbox->waitingItems()->count();
+        abort_if($waiting > 0, 422, $waiting === 1
+            ? 'There is still 1 item at the front desk for this mailbox. Hand it over, forward it or shred it first.'
+            : "There are still {$waiting} items at the front desk for this mailbox. Hand them over, forward them or shred them first.");
+
+        $scans = MailItem::where('mailbox_id', $mailbox->id)->whereNotNull('scan_path')->pluck('scan_path');
+        DB::transaction(function () use ($mailbox) {
+            MailItem::where('mailbox_id', $mailbox->id)->delete();
+            $mailbox->delete();
+        });
+        Storage::disk('local')->delete($scans->all());
+    }
+
     private function storeScan(MailItem $item, UploadedFile $scan): void
     {
         $old = $item->scan_path;

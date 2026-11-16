@@ -66,6 +66,16 @@ export async function updateMailbox(id: number, input: { business_name: string; 
   return run(() => api(`/admin/mail/mailboxes/${id}`, { method: "PUT", body: input }), "Mailbox saved.");
 }
 
+/** Deletes a mailbox with its mail history. Managers only; refused while mail is still at the front desk. */
+export async function deleteMailbox(id: number): Promise<FormState> {
+  try {
+    await api(`/admin/mail/mailboxes/${id}`, { method: "DELETE" });
+  } catch (error) {
+    return toFormState(error);
+  }
+  return { ok: true, message: "Mailbox deleted." };
+}
+
 export async function logMail(mailboxId: number, formData: FormData): Promise<FormState> {
   const form = new FormData();
   for (const key of ["kind", "sender", "description", "received_at"]) {

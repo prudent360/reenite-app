@@ -107,10 +107,19 @@ function MailboxCard({ mailbox }: { mailbox: Mailbox }) {
           </div>
         )}
         {mailbox.state === "lapsed" && (
-          <div className="border-t border-border p-5 sm:px-6">
+          <div className="space-y-4 border-t border-border p-5 sm:px-6">
             <Alert tone="warning" title="Renew to keep this address">
-              We&apos;re still holding any mail for you. Renew your membership to keep using this address.
+              We&apos;re still holding any mail for you. Renew to keep using this address and to download your proof-of-address letter. You keep the same mailbox number.
             </Alert>
+            <ButtonLink href="/dashboard/mailbox/apply">Renew this address</ButtonLink>
+          </div>
+        )}
+        {mailbox.state === "closed" && (
+          <div className="flex flex-col gap-3 border-t border-border p-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            <p className="text-sm text-muted">This address is closed. You can apply again to reopen it with the same mailbox number.</p>
+            <ButtonLink href="/dashboard/mailbox/apply" variant="outline" className="shrink-0">
+              Apply again
+            </ButtonLink>
           </div>
         )}
       </Card>

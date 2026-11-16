@@ -237,6 +237,13 @@ class MailboxTest extends TestCase
         $this->travelTo($mailbox->active_until->addDay());
         $this->getJson('/api/v1/address-verifications/'.$mailbox->verification_code)->assertJsonPath('data.state', 'lapsed');
         $this->actingAs($this->customer)->getJson("/api/v1/mailbox/{$mailbox->id}/certificate")->assertUnprocessable();
+
+        // Applying again renews the same address: same number, same code, active once paid.
+        $this->actingAs($this->customer)->postJson('/api/v1/mailbox/apply', ['membership_plan_id' => $plan->id, 'business_name' => 'Obi Foods Limited'])->assertCreated();
+        app(PlanService::class)->activate(CustomerMembership::latest('id')->first());
+        $this->assertSame(1, Mailbox::count());
+        $this->assertTrue($mailbox->fresh()->isActive());
+        $this->getJson('/api/v1/address-verifications/'.$mailbox->verification_code)->assertJsonPath('data.state', 'active');
     }
 
     public function test_applying_needs_a_plan_that_includes_an_address_and_a_name(): void
@@ -245,5 +252,33 @@ class MailboxTest extends TestCase
 
         $this->actingAs($this->customer)->postJson('/api/v1/mailbox/apply', ['membership_plan_id' => $plan->id, 'business_name' => ''])
             ->assertUnprocessable()->assertJsonValidationErrors(['membership_plan_id' => 'Choose one of the virtual address plans.', 'business_name']);
+    }
+
+    public function test_a_manager_deletes_a_mailbox_once_nothing_is_waiting_at_the_desk(): void
+    {
+        $manager = User::factory()->staff()->create()->assignRole(Role::OperationsManager->value);
+        $mailbox = Mailbox::factory()->for($this->customer)->for($this->location)->create();
+        $code = $mailbox->refresh()->verification_code;
+        Storage::disk('local')->put('mail-scans/old.pdf', 'scan');
+        $item = MailItem::create(['mailbox_id' => $mailbox->id, 'kind' => 'letter', 'received_at' => now(), 'status' => MailItem::WAITING, 'scan_path' => 'mail-scans/old.pdf', 'scan_name' => 'old.pdf']);
+
+        // The front desk can close a mailbox but not wipe it.
+        $this->actingAs($this->frontDesk)->deleteJson("/api/v1/admin/mail/mailboxes/{$mailbox->id}")->assertForbidden();
+
+        // Mail still at the desk has to be dealt with first.
+        $this->actingAs($manager)->deleteJson("/api/v1/admin/mail/mailboxes/{$mailbox->id}")
+            ->assertUnprocessable()->assertJsonPath('message', 'There is still 1 item at the front desk for this mailbox. Hand it over, forward it or shred it first.');
+
+        $item->update(['status' => 'collected']);
+        $this->actingAs($manager)->deleteJson("/api/v1/admin/mail/mailboxes/{$mailbox->id}")->assertNoContent();
+
+        $this->assertSame(0, Mailbox::count());
+        $this->assertSame(0, MailItem::count());
+        Storage::disk('local')->assertMissing('mail-scans/old.pdf');
+
+        // The old letter no longer checks out, and the customer is back to "apply".
+        $this->app['auth']->forgetGuards();
+        $this->getJson("/api/v1/address-verifications/{$code}")->assertNotFound();
+        $this->actingAs($this->customer)->getJson('/api/v1/mailbox')->assertOk()->assertJsonCount(0, 'data');
     }
 }

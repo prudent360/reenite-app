@@ -350,6 +350,8 @@ Route::prefix('v1')->name('v1.')->group(function () {
                 Route::post('mailboxes', [AdminMailboxController::class, 'store'])->name('mailboxes.store');
                 Route::get('mailboxes/{mailbox}', [AdminMailboxController::class, 'show'])->name('mailboxes.show');
                 Route::put('mailboxes/{mailbox}', [AdminMailboxController::class, 'update'])->name('mailboxes.update');
+                // Deleting wipes the mail history too, so it needs a manager, not just the front desk.
+                Route::delete('mailboxes/{mailbox}', [AdminMailboxController::class, 'destroy'])->middleware('permission:customers.manage')->name('mailboxes.destroy');
                 Route::post('mailboxes/{mailbox}/items', [AdminMailboxController::class, 'logMail'])->name('mailboxes.items.store');
                 Route::post('items/{item}/scan', [AdminMailboxController::class, 'uploadScan'])->name('items.scan.store');
                 Route::get('items/{item}/scan', [AdminMailboxController::class, 'scan'])->name('items.scan');
