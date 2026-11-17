@@ -3,8 +3,10 @@
 namespace App\Http\Resources;
 
 use App\Enums\BookingStatus;
+use App\Enums\PaymentStatus;
 use App\Models\Booking;
 use App\Models\BookingAddon;
+use App\Models\Payment;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -80,6 +82,10 @@ class BookingResource extends JsonResource
                 'total' => $addon->total,
             ])),
             'invoice' => new InvoiceResource($this->whenLoaded('invoice')),
+            'pending_transfer' => $this->when(
+                $this->relationLoaded('invoice') && $this->invoice?->relationLoaded('payments') && $this->relationLoaded('user'),
+                fn () => $this->pendingTransfer(),
+            ),
             'customer' => $this->whenLoaded('user', fn () => [
                 'id' => $this->user->id,
                 'name' => $this->user->name,
@@ -90,5 +96,17 @@ class BookingResource extends JsonResource
             'checked_in_by' => $this->whenLoaded('checkedInBy', fn () => $this->checkedInBy?->name),
             'created_at' => $this->created_at?->toIso8601String(),
         ];
+    }
+
+    /**
+     * The bank transfer staff still have to check for this booking, with what the reviewer needs beside it.
+     */
+    private function pendingTransfer(): ?PaymentResource
+    {
+        $payment = $this->invoice?->payments->first(
+            fn (Payment $payment) => $payment->isBankTransfer() && $payment->status === PaymentStatus::AwaitingReview,
+        );
+
+        return $payment ? new PaymentResource($payment->setRelation('invoice', $this->invoice)->setRelation('user', $this->user)) : null;
     }
 }

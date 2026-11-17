@@ -169,6 +169,15 @@ export async function declineBooking(reference: string, reason: string): Promise
   return adminCall(`/admin/bookings/${reference}/decline`, { reason }, "Booking request declined.");
 }
 
+/** The money is in the account: confirms the booking and sends the customer a receipt. */
+export async function approveBookingTransfer(reference: string, note: string): Promise<FormState> {
+  return adminCall(`/admin/bookings/${encodeURIComponent(reference)}/transfer/approve`, { note: note || null }, "Transfer approved. The booking is confirmed and the customer has their receipt.");
+}
+
+export async function rejectBookingTransfer(reference: string, reason: string): Promise<FormState> {
+  return adminCall(`/admin/bookings/${encodeURIComponent(reference)}/transfer/reject`, { reason }, "Transfer rejected. The customer has been emailed the reason.");
+}
+
 /** The space's seats for a booking's time, with which ones it holds now (staff moving a booking). */
 export async function getBookingSeats(reference: string): Promise<Result<SeatMap>> {
   try {

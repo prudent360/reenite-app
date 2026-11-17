@@ -281,6 +281,9 @@ Route::prefix('v1')->name('v1.')->group(function () {
                     Route::post('{booking}/end', [AdminBookingController::class, 'end'])->name('end');
                     Route::post('{booking}/approve', [AdminBookingController::class, 'approve'])->name('approve');
                     Route::post('{booking}/decline', [AdminBookingController::class, 'decline'])->name('decline');
+                    Route::get('{booking}/transfer/proof', [AdminBookingController::class, 'transferProof'])->name('transfer.proof');
+                    Route::post('{booking}/transfer/approve', [AdminBookingController::class, 'approveTransfer'])->name('transfer.approve');
+                    Route::post('{booking}/transfer/reject', [AdminBookingController::class, 'rejectTransfer'])->name('transfer.reject');
                     Route::get('{booking}/seats', [AdminBookingController::class, 'seats'])->name('seats');
                     Route::put('{booking}/seats', [AdminBookingController::class, 'moveSeats'])->name('seats.update');
                 });

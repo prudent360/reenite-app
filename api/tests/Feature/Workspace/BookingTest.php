@@ -27,8 +27,10 @@ use Database\Seeders\RolesAndPermissionsSeeder;
 use Database\Seeders\SettingsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
@@ -467,6 +469,71 @@ class BookingTest extends TestCase
             ->assertJsonPath('data.hold_expires_at', '2026-11-03T07:00:00+00:00')
             ->assertJsonPath('data.invoice.total', 1_500_000);
         Notification::assertSentTo($customer, BookingNotification::class, fn (BookingNotification $notification) => $notification->key === EmailTemplateKey::BookingAwaitingPayment);
+    }
+
+    public function test_staff_see_bookings_that_need_them_and_approve_a_bank_transfer_from_the_list(): void
+    {
+        Notification::fake();
+        Storage::fake('local');
+        app(Settings::class)->set('bank_transfer.enabled', true);
+        $manager = User::factory()->staff()->create()->assignRole(Role::OperationsManager->value);
+        $customer = User::factory()->create();
+
+        // Paid by card: nothing for staff to do.
+        $paid = $this->signIn($customer)->postJson('/api/v1/bookings', $this->roomBooking())->assertCreated()->json('data');
+        $this->payOnline(Booking::where('reference', $paid['reference'])->firstOrFail(), '');
+
+        // Held, with a transfer receipt uploaded.
+        $reference = $this->signIn($customer)->postJson('/api/v1/bookings', $this->roomBooking(['date' => '2026-11-04']))->assertCreated()->json('data.reference');
+        $this->signIn($customer)->post("/api/v1/bookings/{$reference}/bank-transfer", [
+            'proof' => UploadedFile::fake()->image('receipt.jpg'),
+            'sender_name' => 'Ada Obi',
+            'transferred_on' => '2026-11-02',
+        ], ['Accept' => 'application/json'])->assertCreated();
+
+        // Held, still to pay: not staff's move yet.
+        $this->signIn($customer)->postJson('/api/v1/bookings', $this->roomBooking(['date' => '2026-11-05']))->assertCreated();
+
+        $this->signIn($manager)->getJson('/api/v1/admin/bookings?needs_action=1')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.reference', $reference)
+            ->assertJsonPath('data.0.pending_transfer.sender_name', 'Ada Obi')
+            ->assertJsonPath('data.0.pending_transfer.amount', 1_500_000)
+            ->assertJsonPath('data.0.pending_transfer.customer.name', $customer->name);
+        $this->getJson('/api/v1/admin/bookings/day')->assertJsonPath('counts.transfers_to_check', 1);
+        $this->get("/api/v1/admin/bookings/{$reference}/transfer/proof")->assertOk();
+
+        $this->signIn($customer)->postJson("/api/v1/admin/bookings/{$reference}/transfer/approve")->assertForbidden();
+        $this->signIn($manager)->postJson("/api/v1/admin/bookings/{$reference}/transfer/approve", ['note' => 'Seen on the statement'])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'confirmed')
+            ->assertJsonPath('data.paid_via', 'bank_transfer')
+            ->assertJsonPath('data.pending_transfer', null);
+
+        $this->getJson('/api/v1/admin/bookings?needs_action=1')->assertJsonCount(0, 'data');
+        $this->postJson("/api/v1/admin/bookings/{$reference}/transfer/approve")->assertNotFound();
+    }
+
+    public function test_staff_reject_a_bank_transfer_they_cannot_find(): void
+    {
+        Notification::fake();
+        Storage::fake('local');
+        app(Settings::class)->set('bank_transfer.enabled', true);
+        $manager = User::factory()->staff()->create()->assignRole(Role::OperationsManager->value);
+        $customer = User::factory()->create();
+        $reference = $this->signIn($customer)->postJson('/api/v1/bookings', $this->roomBooking())->assertCreated()->json('data.reference');
+        $this->post("/api/v1/bookings/{$reference}/bank-transfer", [
+            'proof' => UploadedFile::fake()->image('receipt.jpg'),
+            'sender_name' => 'Ada Obi',
+            'transferred_on' => '2026-11-02',
+        ], ['Accept' => 'application/json'])->assertCreated();
+
+        $this->signIn($manager)->postJson("/api/v1/admin/bookings/{$reference}/transfer/reject", [])->assertJsonValidationErrors('reason');
+        $this->postJson("/api/v1/admin/bookings/{$reference}/transfer/reject", ['reason' => 'No matching credit that day.'])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'held')
+            ->assertJsonPath('data.pending_transfer', null);
     }
 
     public function test_a_guest_who_registers_with_the_same_email_keeps_their_bookings(): void

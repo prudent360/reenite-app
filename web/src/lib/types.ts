@@ -543,6 +543,8 @@ export type Booking = {
   invoice?: Invoice | null;
   customer?: { id: number; name: string; email: string; phone: string | null; is_guest: boolean };
   checked_in_by?: string | null;
+  /** A bank transfer staff still have to check against the bank statement (admin lists only). */
+  pending_transfer?: Payment | null;
   created_at: string | null;
 };
 
@@ -583,7 +585,7 @@ export type MyPlans = {
 
 export type AdminBookingDay = {
   date: string;
-  counts: { bookings: number; arrivals: number; checked_in: number; awaiting_approval: number };
+  counts: { bookings: number; arrivals: number; checked_in: number; awaiting_approval: number; transfers_to_check: number };
   locations: {
     id: number;
     name: string;

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\BookingStatus;
+use App\Enums\PaymentStatus;
 use Carbon\CarbonImmutable;
 use Database\Factories\BookingFactory;
 use DateTimeInterface;
@@ -128,6 +129,19 @@ class Booking extends Model
         $query->where(fn (Builder $inner) => $inner
             ->whereIn('status', [BookingStatus::PendingApproval->value, BookingStatus::Confirmed->value, BookingStatus::CheckedIn->value])
             ->orWhere(fn (Builder $held) => $held->where('status', BookingStatus::Held->value)->where('hold_expires_at', '>', now())));
+    }
+
+    /**
+     * Not yet paid, with a bank transfer waiting for staff to check against the bank statement.
+     *
+     * @param  Builder<Booking>  $query
+     */
+    public function scopeAwaitingTransferCheck(Builder $query): void
+    {
+        $query->where('status', BookingStatus::Held->value)
+            ->whereHas('invoice.payments', fn (Builder $payments) => $payments
+                ->where('gateway', 'bank_transfer')
+                ->where('status', PaymentStatus::AwaitingReview->value));
     }
 
     /**

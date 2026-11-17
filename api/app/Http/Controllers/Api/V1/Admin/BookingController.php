@@ -3,25 +3,30 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Enums\BookingStatus;
+use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\BookingResource;
 use App\Models\Booking;
 use App\Models\Location;
+use App\Models\Payment;
 use App\Models\Space;
+use App\Payments\PaymentService;
 use App\Workspace\BookingService;
 use App\Workspace\SeatPlanner;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Front desk and operations: the day's bookings, check-in, approvals and cancellations.
  */
 class BookingController extends Controller
 {
-    public function __construct(private BookingService $bookings) {}
+    public function __construct(private BookingService $bookings, private PaymentService $payments) {}
 
     public function index(Request $request): AnonymousResourceCollection
     {
@@ -30,12 +35,16 @@ class BookingController extends Controller
             'date' => ['nullable', 'date_format:Y-m-d'],
             'space_id' => ['nullable', 'integer'],
             'search' => ['nullable', 'string', 'max:100'],
+            'needs_action' => ['nullable', 'boolean'],
         ]);
         $statuses = array_filter(explode(',', (string) $request->input('status')));
 
         $bookings = Booking::query()
-            ->with(['user', 'space.location', 'invoice'])
+            ->with(['user', 'space.location', 'invoice.payments'])
             ->when($statuses, fn ($query) => $query->whereIn('status', $statuses))
+            ->when($request->boolean('needs_action'), fn ($query) => $query->where(fn ($inner) => $inner
+                ->where('status', BookingStatus::PendingApproval->value)
+                ->orWhere(fn ($held) => $held->awaitingTransferCheck())))
             ->when($request->filled('space_id'), fn ($query) => $query->where('space_id', $request->integer('space_id')))
             ->when($request->filled('date'), function ($query) use ($request) {
                 [$from, $to] = $this->dayRange((string) $request->input('date'));
@@ -84,6 +93,7 @@ class BookingController extends Controller
                 'arrivals' => $bookings->where('status', BookingStatus::Confirmed)->count(),
                 'checked_in' => $bookings->where('status', BookingStatus::CheckedIn)->count(),
                 'awaiting_approval' => Booking::where('status', BookingStatus::PendingApproval->value)->count(),
+                'transfers_to_check' => Booking::query()->awaitingTransferCheck()->count(),
             ],
             'locations' => $locations->map(fn (Location $location) => [
                 'id' => $location->id,
@@ -108,6 +118,51 @@ class BookingController extends Controller
                 ]),
             ]),
         ]);
+    }
+
+    /**
+     * The receipt the customer uploaded for a booking paid by bank transfer.
+     */
+    public function transferProof(Booking $booking): StreamedResponse
+    {
+        $payment = $this->pendingTransfer($booking);
+        abort_unless($payment->proof_path && Storage::disk('local')->exists($payment->proof_path), 404);
+
+        return Storage::disk('local')->response($payment->proof_path, $payment->proof_name);
+    }
+
+    /**
+     * The money is in the account: marks the transfer paid, which confirms the booking and sends the receipt.
+     */
+    public function approveTransfer(Request $request, Booking $booking): BookingResource
+    {
+        $validated = $request->validate(['note' => ['nullable', 'string', 'max:500']]);
+        $this->payments->approveTransfer($this->pendingTransfer($booking), $request->user(), $validated['note'] ?? null);
+
+        return $this->show($booking->refresh());
+    }
+
+    /**
+     * The money can't be found: the customer is emailed the reason and can pay again.
+     */
+    public function rejectTransfer(Request $request, Booking $booking): BookingResource
+    {
+        $validated = $request->validate(['reason' => ['required', 'string', 'max:500']]);
+        $this->payments->rejectTransfer($this->pendingTransfer($booking), $request->user(), $validated['reason']);
+
+        return $this->show($booking->refresh());
+    }
+
+    private function pendingTransfer(Booking $booking): Payment
+    {
+        $payment = $booking->invoice?->payments()
+            ->where('gateway', 'bank_transfer')
+            ->where('status', PaymentStatus::AwaitingReview->value)
+            ->latest('id')
+            ->first();
+        abort_if($payment === null, 404, 'No bank transfer is waiting to be checked for this booking.');
+
+        return $payment;
     }
 
     /**
