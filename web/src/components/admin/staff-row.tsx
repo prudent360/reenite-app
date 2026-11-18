@@ -49,20 +49,21 @@ export function StaffRow({ member, roles, isSelf }: { member: User; roles: { nam
           <p className="truncate text-xs text-muted">
             {member.email} · {invitePending ? "Hasn't signed in yet" : `Last sign-in ${formatDate(member.last_login_at)}`}
           </p>
+          {invitePending && (
+            <p className="mt-1 flex gap-3 text-xs font-semibold">
+              <button type="button" disabled={pending} onClick={() => run(() => resendStaffInvite(member.id))} className="text-brand-600 hover:underline disabled:opacity-60">
+                Resend invite
+              </button>
+              <button type="button" disabled={pending} onClick={remove} className="text-danger hover:underline disabled:opacity-60">
+                Remove
+              </button>
+            </p>
+          )}
         </div>
       </div>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex items-center gap-2">
         {pending && <DotLoader />}
-        {invitePending && (
-          <>
-            <Button variant="outline" size="sm" disabled={pending} onClick={() => run(() => resendStaffInvite(member.id))}>
-              Resend invite
-            </Button>
-            <Button variant="ghost" size="sm" disabled={pending} onClick={remove} className="text-danger hover:bg-danger-soft">
-              Remove
-            </Button>
-          </>
-        )}
+
         <select
           aria-label={`Role for ${member.name}`}
           defaultValue={member.roles[0]?.name}
