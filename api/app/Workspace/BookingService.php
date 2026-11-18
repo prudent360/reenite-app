@@ -24,7 +24,6 @@ use App\Support\StaffAlerts;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -250,7 +249,7 @@ class BookingService
         $booking->load('user');
         match ($booking->status) {
             BookingStatus::Confirmed => $this->announceConfirmed($booking),
-            BookingStatus::PendingApproval => $booking->user->notify(new BookingNotification(EmailTemplateKey::BookingPendingApproval, $booking)),
+            BookingStatus::PendingApproval => $this->announceRequest($booking),
             default => null,
         };
 
@@ -728,6 +727,21 @@ class BookingService
         ]);
     }
 
+    /**
+     * The customer hears it's being reviewed; the team hears there's a request to approve.
+     */
+    private function announceRequest(Booking $booking): void
+    {
+        $booking->loadMissing(['user', 'space.location']);
+        $booking->user->notify(new BookingNotification(EmailTemplateKey::BookingPendingApproval, $booking));
+
+        StaffAlerts::send(StaffAlerts::recipients('bookings.manage'), new StaffAlertNotification(
+            EmailTemplateKey::StaffBookingRequest,
+            BookingNotification::bookingVariables($booking) + ['customer_name' => $booking->user->name, 'amount' => Money::format($booking->total)],
+            FrontendLinks::adminBookingsNeedingAction(),
+        ));
+    }
+
     private function announceConfirmed(Booking $booking): void
     {
         $booking->loadMissing(['user', 'space.location']);
@@ -736,7 +750,7 @@ class BookingService
             $booking->user->notify(new BookingNotification(EmailTemplateKey::GuestAccountInvite, $booking));
         }
 
-        Notification::send(StaffAlerts::recipients('bookings.manage'), new StaffAlertNotification(
+        StaffAlerts::send(StaffAlerts::recipients('bookings.manage'), new StaffAlertNotification(
             EmailTemplateKey::StaffNewBooking,
             BookingNotification::bookingVariables($booking) + ['customer_name' => $booking->user->name, 'amount' => Money::format($booking->chargedAmount())],
             FrontendLinks::adminBooking((string) $booking->reference),

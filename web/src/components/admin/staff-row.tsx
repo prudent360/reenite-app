@@ -2,7 +2,8 @@
 
 import { useTransition } from "react";
 import { toast } from "sonner";
-import { updateStaff } from "@/lib/actions/admin";
+import { removeStaffInvite, resendStaffInvite, updateStaff } from "@/lib/actions/admin";
+import type { FormState } from "@/lib/types";
 import type { User } from "@/lib/types";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/card";
@@ -13,16 +14,25 @@ import { formatDate } from "@/lib/utils";
 export function StaffRow({ member, roles, isSelf }: { member: User; roles: { name: string; label: string }[]; isSelf: boolean }) {
   const [pending, startTransition] = useTransition();
   const suspended = member.status === "suspended";
+  // Never signed in: they haven't used their invite link yet.
+  const invitePending = !member.last_login_at && !isSelf;
 
-  function save(changes: { role?: string; status?: string }) {
+  function run(action: () => Promise<FormState>) {
     startTransition(async () => {
-      const result = await updateStaff(member.id, changes);
+      const result = await action();
       if (result.ok) {
         toast.success(result.message);
       } else {
         toast.error(result.message ?? "Couldn't update this staff member.");
       }
     });
+  }
+
+  const save = (changes: { role?: string; status?: string }) => run(() => updateStaff(member.id, changes));
+
+  function remove() {
+    if (!window.confirm(`Remove ${member.name}'s invite? Their link stops working. You can invite them again afterwards, e.g. with the right email.`)) return;
+    run(() => removeStaffInvite(member.id));
   }
 
   return (
@@ -34,14 +44,25 @@ export function StaffRow({ member, roles, isSelf }: { member: User; roles: { nam
             {member.name}
             {isSelf && <Badge tone="brand">You</Badge>}
             {suspended && <Badge tone="danger">Suspended</Badge>}
+            {invitePending && <Badge tone="warning">Invite pending</Badge>}
           </p>
           <p className="truncate text-xs text-muted">
-            {member.email} · Last sign-in {formatDate(member.last_login_at)}
+            {member.email} · {invitePending ? "Hasn't signed in yet" : `Last sign-in ${formatDate(member.last_login_at)}`}
           </p>
         </div>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {pending && <DotLoader />}
+        {invitePending && (
+          <>
+            <Button variant="outline" size="sm" disabled={pending} onClick={() => run(() => resendStaffInvite(member.id))}>
+              Resend invite
+            </Button>
+            <Button variant="ghost" size="sm" disabled={pending} onClick={remove} className="text-danger hover:bg-danger-soft">
+              Remove
+            </Button>
+          </>
+        )}
         <select
           aria-label={`Role for ${member.name}`}
           defaultValue={member.roles[0]?.name}

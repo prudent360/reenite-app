@@ -19,7 +19,6 @@ use App\Support\StaffAlerts;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
@@ -291,7 +290,7 @@ class ConsultationService
         if ($consultation->officer && ! $recipients->contains($consultation->officer)) {
             $recipients->push($consultation->officer);
         }
-        Notification::send($recipients, new StaffAlertNotification(
+        StaffAlerts::send($recipients, new StaffAlertNotification(
             EmailTemplateKey::StaffNewConsultation,
             ConsultationNotification::consultationVariables($consultation) + [
                 'customer_name' => $consultation->user->name,

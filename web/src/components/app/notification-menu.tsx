@@ -42,6 +42,7 @@ const eventIcons: Record<string, ComponentType<{ className?: string }>> = {
   staff_order_assigned: Package,
   staff_transfer_to_review: CreditCard,
   staff_new_booking: CalendarCheck,
+  staff_booking_request: CalendarClock,
   staff_mail_request: Mail,
   staff_new_consultation: MessagesSquare,
   staff_appointment_reschedule: CalendarClock,

@@ -16,6 +16,26 @@ class StaffAlertNotification extends TemplatedNotification
      */
     public function __construct(public EmailTemplateKey $key, public array $values, public string $url) {}
 
+    /**
+     * Only under the bell: for Super Admins kept informed about work that's someone else's to do.
+     */
+    public bool $onlyInApp = false;
+
+    public function inAppOnly(): static
+    {
+        $this->onlyInApp = true;
+
+        return $this;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function via(object $notifiable): array
+    {
+        return $this->onlyInApp ? ['database'] : parent::via($notifiable);
+    }
+
     public function template(): EmailTemplateKey
     {
         return $this->key;

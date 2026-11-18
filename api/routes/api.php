@@ -420,6 +420,8 @@ Route::prefix('v1')->name('v1.')->group(function () {
                 Route::get('staff', [StaffController::class, 'index'])->name('staff.index');
                 Route::post('staff', [StaffController::class, 'store'])->name('staff.store');
                 Route::patch('staff/{user}', [StaffController::class, 'update'])->name('staff.update');
+                Route::post('staff/{user}/invite', [StaffController::class, 'resendInvite'])->middleware('throttle:5,1')->name('staff.invite');
+                Route::delete('staff/{user}', [StaffController::class, 'destroy'])->name('staff.destroy');
             });
         });
     });

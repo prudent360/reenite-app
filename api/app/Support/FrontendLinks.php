@@ -149,6 +149,14 @@ class FrontendLinks
         return self::base().'/register?'.http_build_query(['email' => $email]);
     }
 
+    /**
+     * The bookings table filtered to requests to approve and transfers to check.
+     */
+    public static function adminBookingsNeedingAction(): string
+    {
+        return self::base().'/admin/bookings?view=table&filter=action';
+    }
+
     public static function adminTransfers(): string
     {
         return self::base().'/admin/finance/transfers';

@@ -5,7 +5,9 @@ namespace App\Payments;
 use App\Enums\EmailTemplateKey;
 use App\Enums\InvoiceStatus;
 use App\Enums\PaymentStatus;
+use App\Enums\Role;
 use App\Events\InvoicePaid;
+use App\Models\Booking;
 use App\Models\CustomerMembership;
 use App\Models\CustomerPass;
 use App\Models\Invoice;
@@ -236,11 +238,15 @@ class PaymentService
         $payment->update(['proof_path' => $proof->storeAs('payment-proofs', $payment->reference.'.'.$proof->extension(), 'local')]);
 
         $customer->notify(new TransferReceivedNotification($payment));
-        Notification::send(StaffAlerts::recipients('payments.verify'), new StaffAlertNotification(EmailTemplateKey::StaffTransferToReview, [
-            'invoice_number' => $invoice->number,
-            'amount' => Money::format($payment->amount),
-            'customer_name' => $customer->name,
-        ], FrontendLinks::adminTransfers()));
+        $values = ['invoice_number' => $invoice->number, 'amount' => Money::format($payment->amount), 'customer_name' => $customer->name];
+        $finance = StaffAlerts::recipients('payments.verify');
+        StaffAlerts::send($finance, new StaffAlertNotification(EmailTemplateKey::StaffTransferToReview, $values, FrontendLinks::adminTransfers()));
+
+        // A booking's transfer can also be approved from the Bookings page, so whoever runs bookings hears about it too.
+        if ($invoice->source_type === Booking::class) {
+            $bookingStaff = StaffAlerts::recipients('bookings.manage')->reject(fn (User $staff) => $finance->contains('id', $staff->id) || $staff->hasRole(Role::SuperAdmin->value));
+            Notification::send($bookingStaff, new StaffAlertNotification(EmailTemplateKey::StaffTransferToReview, $values, FrontendLinks::adminBookingsNeedingAction()));
+        }
 
         return $payment;
     }

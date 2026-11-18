@@ -55,6 +55,7 @@ enum EmailTemplateKey: string
     case StaffOrderAssigned = 'staff_order_assigned';
     case StaffTransferToReview = 'staff_transfer_to_review';
     case StaffNewBooking = 'staff_new_booking';
+    case StaffBookingRequest = 'staff_booking_request';
     case StaffMailRequest = 'staff_mail_request';
     case StaffNewConsultation = 'staff_new_consultation';
     case StaffAppointmentReschedule = 'staff_appointment_reschedule';
@@ -78,7 +79,7 @@ enum EmailTemplateKey: string
             self::ComplianceDueSoon, self::ComplianceOverdue => 'Compliance',
             self::ConsultationConfirmed, self::ConsultationReminder, self::ConsultationCancelled => 'Consultations',
             self::AppointmentScheduled, self::AppointmentReminder, self::AppointmentStartingSoon, self::AppointmentChanged, self::AppointmentCancelled => 'Appointments',
-            self::StaffOrderAssigned, self::StaffTransferToReview, self::StaffNewBooking, self::StaffMailRequest, self::StaffNewConsultation,
+            self::StaffOrderAssigned, self::StaffTransferToReview, self::StaffNewBooking, self::StaffBookingRequest, self::StaffMailRequest, self::StaffNewConsultation,
             self::StaffAppointmentReschedule => 'Staff alerts',
             self::DocumentToSign => 'Documents',
         };
@@ -130,6 +131,7 @@ enum EmailTemplateKey: string
             self::StaffOrderAssigned => 'Order assigned to you',
             self::StaffTransferToReview => 'Bank transfer to check',
             self::StaffNewBooking => 'New booking',
+            self::StaffBookingRequest => 'Booking request to approve',
             self::DocumentToSign => 'Document to sign',
             self::MailReceived => 'New mail arrived',
             self::MailScanned => 'Mail scanned',
@@ -186,6 +188,7 @@ enum EmailTemplateKey: string
             self::StaffOrderAssigned => 'Tells an officer an order has been assigned to them.',
             self::StaffTransferToReview => 'Tells Finance a customer has sent proof of a bank transfer.',
             self::StaffNewBooking => 'Tells the front desk about a new confirmed booking.',
+            self::StaffBookingRequest => 'Tells the front desk a customer has asked to book a space that needs approval.',
             self::DocumentToSign => 'Sent when the team shares an agreement for the customer to read and sign online.',
             self::MailReceived => 'Sent when the front desk logs a letter or parcel for a virtual office customer.',
             self::MailScanned => 'Sent when a scan of a letter is ready to view.',
@@ -298,6 +301,7 @@ enum EmailTemplateKey: string
             self::StaffOrderAssigned => $common + ['order_reference' => 'Order number', 'service_name' => 'Service', 'customer_name' => 'Customer', 'due_date' => 'Due date', 'assigned_by' => 'Who assigned it'],
             self::StaffTransferToReview => $common + ['invoice_number' => 'Invoice number', 'amount' => 'Amount transferred', 'customer_name' => 'Customer'],
             self::StaffNewBooking => $common + $booking + ['customer_name' => 'Customer or guest', 'amount' => 'Amount paid'],
+            self::StaffBookingRequest => $common + $booking + ['customer_name' => 'Customer or guest', 'amount' => 'Price quoted'],
             self::DocumentToSign => $common + ['document_title' => 'Name of the document'],
             self::MailReceived, self::MailScanned => $common + $mail,
             self::StaffMailRequest => $common + $mail + ['customer_name' => 'Customer', 'request' => 'What they asked for', 'request_note' => 'Their note, e.g. a forwarding address'],
@@ -539,6 +543,13 @@ enum EmailTemplateKey: string
                 'heading' => 'New booking {{booking_reference}}',
                 'body' => "{{customer_name}} booked {{space_name}} at {{location_name}}.\n\n{{booking_date}}, {{booking_time}}\nPeople: {{guests}}\nPaid: {{amount}}",
                 'button_text' => 'View booking',
+                'footer' => null,
+            ],
+            self::StaffBookingRequest => [
+                'subject' => 'Booking request to approve: {{space_name}}, {{booking_date}}',
+                'heading' => 'Booking request {{booking_reference}}',
+                'body' => "{{customer_name}} has asked to book {{space_name}} at {{location_name}}.\n\n{{booking_date}}, {{booking_time}}\nPeople: {{guests}}\nPrice: {{amount}}\n\nApprove it and they'll be asked to pay, or decline it with a reason.",
+                'button_text' => 'Review request',
                 'footer' => null,
             ],
             self::DocumentToSign => [

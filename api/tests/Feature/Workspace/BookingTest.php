@@ -536,6 +536,55 @@ class BookingTest extends TestCase
             ->assertJsonPath('data.pending_transfer', null);
     }
 
+    public function test_the_owner_sees_booking_alerts_under_the_bell_while_the_front_desk_gets_the_email(): void
+    {
+        Notification::fake();
+        $owner = User::factory()->staff()->create()->assignRole(Role::SuperAdmin->value);
+        $frontDesk = User::factory()->staff()->create()->assignRole(Role::FrontDesk->value);
+
+        $response = $this->postJson('/api/v1/bookings', $this->roomBooking() + $this->guest())->assertCreated();
+        $this->payOnline(Booking::where('reference', $response->json('data.reference'))->firstOrFail(), $response->json('token'));
+
+        Notification::assertSentTo($frontDesk, StaffAlertNotification::class, fn (StaffAlertNotification $alert, array $channels) => $alert->key === EmailTemplateKey::StaffNewBooking && in_array('mail', $channels, true));
+        Notification::assertSentTo($owner, StaffAlertNotification::class, fn (StaffAlertNotification $alert, array $channels) => $alert->key === EmailTemplateKey::StaffNewBooking && $channels === ['database']);
+    }
+
+    public function test_the_team_is_told_about_a_booking_request_to_approve(): void
+    {
+        Notification::fake();
+        $this->room->update(['requires_approval' => true]);
+        $owner = User::factory()->staff()->create()->assignRole(Role::SuperAdmin->value);
+        $frontDesk = User::factory()->staff()->create()->assignRole(Role::FrontDesk->value);
+
+        $this->signIn(User::factory()->create())->postJson('/api/v1/bookings', $this->roomBooking())->assertCreated();
+
+        Notification::assertSentTo($frontDesk, StaffAlertNotification::class, fn (StaffAlertNotification $alert) => $alert->key === EmailTemplateKey::StaffBookingRequest
+            && str_ends_with($alert->url, '/admin/bookings?view=table&filter=action'));
+        Notification::assertSentTo($owner, StaffAlertNotification::class, fn (StaffAlertNotification $alert, array $channels) => $alert->key === EmailTemplateKey::StaffBookingRequest && $channels === ['database']);
+    }
+
+    public function test_a_transfer_for_a_booking_alerts_finance_and_whoever_runs_bookings(): void
+    {
+        Notification::fake();
+        Storage::fake('local');
+        app(Settings::class)->set('bank_transfer.enabled', true);
+        $finance = User::factory()->staff()->create()->assignRole(Role::Finance->value);
+        $frontDesk = User::factory()->staff()->create()->assignRole(Role::FrontDesk->value);
+        $customer = User::factory()->create();
+
+        $reference = $this->signIn($customer)->postJson('/api/v1/bookings', $this->roomBooking())->assertCreated()->json('data.reference');
+        $this->post("/api/v1/bookings/{$reference}/bank-transfer", [
+            'proof' => UploadedFile::fake()->image('receipt.jpg'),
+            'sender_name' => 'Ada Obi',
+            'transferred_on' => '2026-11-02',
+        ], ['Accept' => 'application/json'])->assertCreated();
+
+        Notification::assertSentTo($finance, StaffAlertNotification::class, fn (StaffAlertNotification $alert) => $alert->key === EmailTemplateKey::StaffTransferToReview
+            && str_ends_with($alert->url, '/admin/finance/transfers'));
+        Notification::assertSentTo($frontDesk, StaffAlertNotification::class, fn (StaffAlertNotification $alert) => $alert->key === EmailTemplateKey::StaffTransferToReview
+            && str_ends_with($alert->url, '/admin/bookings?view=table&filter=action'));
+    }
+
     public function test_a_guest_who_registers_with_the_same_email_keeps_their_bookings(): void
     {
         Notification::fake();

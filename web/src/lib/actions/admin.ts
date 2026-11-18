@@ -30,6 +30,27 @@ export async function updateStaff(userId: number, changes: { role?: string; stat
   return { ok: true, message: "Staff member updated." };
 }
 
+/** A fresh invite link for someone who hasn't signed in yet; the old link stops working. */
+export async function resendStaffInvite(userId: number): Promise<FormState> {
+  try {
+    const { message } = await api<{ message: string }>(`/admin/staff/${userId}/invite`, { method: "POST" });
+    return { ok: true, message };
+  } catch (error) {
+    return toFormState(error);
+  }
+}
+
+/** Removes an invite nobody accepted, so it can be sent again to the right person or email. */
+export async function removeStaffInvite(userId: number): Promise<FormState> {
+  try {
+    await api(`/admin/staff/${userId}`, { method: "DELETE" });
+  } catch (error) {
+    return toFormState(error);
+  }
+  refresh();
+  return { ok: true, message: "Invite removed." };
+}
+
 export async function setCustomerStatus(userId: number, status: "active" | "suspended"): Promise<FormState> {
   try {
     await api(`/admin/customers/${userId}/status`, { method: "PATCH", body: { status } });

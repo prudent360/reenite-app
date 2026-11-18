@@ -11,7 +11,6 @@ use App\Support\FrontendLinks;
 use App\Support\StaffAlerts;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
@@ -157,7 +156,7 @@ class AppointmentService
         if ($response === Appointment::RESCHEDULE_REQUESTED) {
             $appointment->load(['client', 'assignee', 'creator']);
             $staff = $appointment->assignee ?? $appointment->creator;
-            Notification::send(
+            StaffAlerts::send(
                 $staff && $staff->status === User::STATUS_ACTIVE ? collect([$staff]) : StaffAlerts::recipients('appointments.manage'),
                 new StaffAlertNotification(EmailTemplateKey::StaffAppointmentReschedule, AppointmentNotification::appointmentVariables($appointment) + [
                     'client_name' => $appointment->client->name,

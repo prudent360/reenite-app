@@ -61,8 +61,9 @@ class StaffAlertTest extends TestCase
             'transferred_on' => now()->toDateString(),
         ], ['Accept' => 'application/json'])->assertCreated();
 
-        Notification::assertSentTo($finance, StaffAlertNotification::class, fn (StaffAlertNotification $alert) => $alert->key === EmailTemplateKey::StaffTransferToReview);
-        Notification::assertNotSentTo($superAdmin, StaffAlertNotification::class);
+        Notification::assertSentTo($finance, StaffAlertNotification::class, fn (StaffAlertNotification $alert, array $channels) => $alert->key === EmailTemplateKey::StaffTransferToReview && in_array('mail', $channels, true));
+        // The owner isn't emailed about Finance's work, but still sees it under the bell.
+        Notification::assertSentTo($superAdmin, StaffAlertNotification::class, fn (StaffAlertNotification $alert, array $channels) => $channels === ['database']);
     }
 
     public function test_template_list_is_grouped_with_new_templates(): void

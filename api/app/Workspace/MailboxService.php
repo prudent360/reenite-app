@@ -17,7 +17,6 @@ use App\Support\StaffAlerts;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
@@ -160,7 +159,7 @@ class MailboxService
 
         $item->update(['requested_action' => $action, 'request_note' => $note, 'requested_at' => now()]);
 
-        Notification::send(StaffAlerts::recipients('mail.manage'), new StaffAlertNotification(
+        StaffAlerts::send(StaffAlerts::recipients('mail.manage'), new StaffAlertNotification(
             EmailTemplateKey::StaffMailRequest,
             MailNotification::mailVariables($item) + [
                 'customer_name' => $customer->name,
