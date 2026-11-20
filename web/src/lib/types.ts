@@ -26,6 +26,18 @@ export type User = {
   created_at: string | null;
 };
 
+/** What the admin customer page shows beside the profile: totals and the latest of everything they have. */
+export type CustomerOverview = {
+  totals: { bookings: number; orders: number; consultations: number; paid: number; outstanding: number };
+  bookings: { reference: string; space_name: string; location_name: string; starts_at: string; ends_at: string; status: string; status_label: string; total: number }[];
+  orders: { reference: string; service_name: string; status: string; status_label: string; created_at: string }[];
+  invoices: { id: number; number: string; status: string; status_label: string; total: number; amount_paid: number; due_at: string | null; created_at: string }[];
+  consultations: { reference: string; name: string; starts_at: string; status: string; status_label: string }[];
+  plans: { kind: "Pass" | "Membership"; name: string; status: string; starts_at: string | null; ends_at: string | null }[];
+  businesses: { id: number; name: string; entity_type: string | null; registration_number: string | null }[];
+  mailboxes: { id: number; number: string; business_name: string; status: string; active_until: string | null }[];
+};
+
 export type CustomerImportResult = "new" | "guest" | "exists" | "invalid";
 
 export type CustomerImportRow = { row: number; name: string; email: string; phone: string; result: CustomerImportResult; note: string | null };

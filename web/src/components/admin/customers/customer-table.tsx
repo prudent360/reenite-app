@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Ban, Mail, RotateCcw, Trash2, X } from "lucide-react";
+import { Ban, Eye, Mail, RotateCcw, Trash2, X } from "lucide-react";
 import { CustomerStatusButton } from "@/components/admin/customer-status-button";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -112,7 +113,7 @@ export function CustomerTable({ customers, canManage }: { customers: User[]; can
               <th className="px-5 py-3">Email</th>
               <th className="px-5 py-3">Status</th>
               <th className="px-5 py-3">Joined</th>
-              {canManage && <th className="px-5 py-3 text-right">Actions</th>}
+              <th className="px-5 py-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -132,23 +133,26 @@ export function CustomerTable({ customers, canManage }: { customers: User[]; can
                     </td>
                   )}
                   <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-3">
-                      <Avatar name={customer.name} className="size-8" />
+                    <Link href={`/admin/customers/${customer.id}`} className="group flex items-center gap-3">
+                      <Avatar name={customer.name} src={customer.avatar_url} className="size-8" />
                       <div className="min-w-0">
-                        <p className="truncate font-semibold">{customer.name}</p>
+                        <p className="truncate font-semibold group-hover:text-brand-600 group-hover:underline">{customer.name}</p>
                         <p className="truncate text-xs text-muted">{customer.email}</p>
                       </div>
-                    </div>
+                    </Link>
                   </td>
                   <td className="px-5 py-3.5 text-muted">{customer.phone ?? "Not given"}</td>
                   <td className="px-5 py-3.5">{customer.email_verified ? <Badge tone="success">Verified</Badge> : <Badge tone="warning">Unverified</Badge>}</td>
                   <td className="px-5 py-3.5">{customer.status === "active" ? <Badge tone="info">Active</Badge> : <Badge tone="danger">Suspended</Badge>}</td>
                   <td className="px-5 py-3.5 text-muted">{formatDate(customer.created_at)}</td>
-                  {canManage && (
-                    <td className="px-5 py-3.5 text-right">
-                      <CustomerStatusButton userId={customer.id} name={customer.name} status={customer.status} />
-                    </td>
-                  )}
+                  <td className="px-5 py-3.5 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <Link href={`/admin/customers/${customer.id}`} className="inline-flex h-9 items-center gap-1.5 rounded-xl px-3 text-sm font-semibold text-foreground hover:bg-surface-muted">
+                        <Eye className="size-4" /> View
+                      </Link>
+                      {canManage && <CustomerStatusButton userId={customer.id} name={customer.name} status={customer.status} />}
+                    </div>
+                  </td>
                 </tr>
               );
             })}
