@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\Admin\ComplianceController as AdminComplianceCon
 use App\Http\Controllers\Api\V1\Admin\ConsultationController as AdminConsultationController;
 use App\Http\Controllers\Api\V1\Admin\ConsultationTypeController;
 use App\Http\Controllers\Api\V1\Admin\CustomerBulkController;
+use App\Http\Controllers\Api\V1\Admin\CustomerImportController;
 use App\Http\Controllers\Api\V1\Admin\DashboardController;
 use App\Http\Controllers\Api\V1\Admin\Finance\CouponController;
 use App\Http\Controllers\Api\V1\Admin\Finance\InvoiceController as AdminInvoiceController;
@@ -134,6 +135,7 @@ Route::prefix('v1')->name('v1.')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         Route::put('profile', [ProfileController::class, 'update'])->name('profile.update');
         Route::put('profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
+        Route::put('profile/temporary-password', [ProfileController::class, 'replaceTemporaryPassword'])->name('profile.temporary-password');
 
         Route::prefix('notifications')->name('notifications.')->group(function () {
             Route::get('/', [NotificationController::class, 'index'])->name('index');
@@ -222,6 +224,9 @@ Route::prefix('v1')->name('v1.')->group(function () {
                 Route::post('delete', [CustomerBulkController::class, 'destroy'])->name('delete');
                 Route::post('message', [CustomerBulkController::class, 'message'])->middleware('throttle:10,1')->name('message');
             });
+            Route::post('customers/import', CustomerImportController::class)
+                ->middleware(['permission:customers.manage', 'throttle:20,1'])
+                ->name('customers.import');
             Route::patch('customers/{user}/status', [UserController::class, 'updateStatus'])
                 ->middleware('permission:customers.manage')
                 ->name('customers.status');

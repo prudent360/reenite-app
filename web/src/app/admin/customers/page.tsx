@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { ChevronLeft, ChevronRight, Search, Users } from "lucide-react";
 import { CustomerTable } from "@/components/admin/customers/customer-table";
+import { ImportCustomersButton } from "@/components/admin/customers/import-customers-dialog";
 import { PageHeader } from "@/components/app/page-header";
 import { buttonClasses } from "@/components/ui/button";
 import { Card, EmptyState } from "@/components/ui/card";
@@ -17,12 +18,25 @@ export const metadata: Metadata = { title: "Customers" };
 export default function CustomersPage({ searchParams }: PageProps<"/admin/customers">) {
   return (
     <>
-      <PageHeader title="Customers" description="Everyone who has signed up for a Reenite account." />
+      <PageHeader
+        title="Customers"
+        description="Everyone who has signed up for a Reenite account."
+        actions={
+          <Suspense fallback={null}>
+            <ImportAction />
+          </Suspense>
+        }
+      />
       <Suspense fallback={<TableSkeleton />}>
         <CustomerList searchParams={searchParams} />
       </Suspense>
     </>
   );
+}
+
+async function ImportAction() {
+  const viewer = await requireStaff("customers.view");
+  return can(viewer, "customers.manage") ? <ImportCustomersButton /> : null;
 }
 
 async function CustomerList({ searchParams }: { searchParams: PageProps<"/admin/customers">["searchParams"] }) {

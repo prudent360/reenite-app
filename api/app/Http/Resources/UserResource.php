@@ -35,6 +35,7 @@ class UserResource extends JsonResource
             'status' => $this->status,
             'avatar_url' => $this->avatar_path ? Storage::url($this->avatar_path) : null,
             'email_verified' => $this->hasVerifiedEmail(),
+            'must_change_password' => (bool) $this->must_change_password,
             'roles' => $roles->map(fn (string $name) => [
                 'name' => $name,
                 'label' => Role::tryFrom($name)?->label() ?? $name,

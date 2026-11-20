@@ -67,6 +67,7 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     protected $attributes = [
         'whatsapp_opt_in_at' => null,
+        'must_change_password' => false,
     ];
 
     /**
@@ -81,6 +82,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'phone_verified_at' => 'datetime',
             'whatsapp_opt_in_at' => 'datetime',
             'last_login_at' => 'datetime',
+            'must_change_password' => 'boolean',
             'password' => 'hashed',
         ];
     }

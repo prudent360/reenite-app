@@ -12,6 +12,7 @@ enum EmailTemplateKey: string
     case PasswordReset = 'password_reset';
     case StaffInvite = 'staff_invite';
     case PasswordChanged = 'password_changed';
+    case CustomerImported = 'customer_imported';
     case CustomerMessage = 'customer_message';
     case InvoiceIssued = 'invoice_issued';
     case PaymentReceipt = 'payment_receipt';
@@ -68,7 +69,7 @@ enum EmailTemplateKey: string
     public function group(): string
     {
         return match ($this) {
-            self::EmailVerification, self::PasswordReset, self::StaffInvite, self::PasswordChanged, self::CustomerMessage => 'Account',
+            self::EmailVerification, self::PasswordReset, self::StaffInvite, self::PasswordChanged, self::CustomerImported, self::CustomerMessage => 'Account',
             self::InvoiceIssued, self::PaymentReceipt, self::TransferReceived, self::TransferRejected, self::InvoiceReminder, self::CheckoutNudge => 'Billing',
             self::OrderReceived, self::OrderUpdated, self::InfoRequested, self::OrderCompleted, self::OrderMessage => 'Orders',
             self::BookingConfirmed, self::BookingAwaitingPayment, self::BookingPendingApproval, self::BookingReminder, self::BookingEndingSoon, self::BookingEnded,
@@ -91,7 +92,7 @@ enum EmailTemplateKey: string
      */
     public function showsInApp(): bool
     {
-        return ! in_array($this, [self::EmailVerification, self::PasswordReset, self::StaffInvite, self::GuestAccountInvite], true);
+        return ! in_array($this, [self::EmailVerification, self::PasswordReset, self::StaffInvite, self::CustomerImported, self::GuestAccountInvite], true);
     }
 
     public function name(): string
@@ -101,6 +102,7 @@ enum EmailTemplateKey: string
             self::PasswordReset => 'Password reset',
             self::StaffInvite => 'Staff invitation',
             self::PasswordChanged => 'Password changed',
+            self::CustomerImported => 'Imported customer: sign-in details',
             self::CustomerMessage => 'Message from the team',
             self::InvoiceIssued => 'New invoice',
             self::PaymentReceipt => 'Payment receipt',
@@ -158,6 +160,7 @@ enum EmailTemplateKey: string
             self::PasswordReset => 'Sent when someone asks to reset a forgotten password.',
             self::StaffInvite => 'Sent to new team members so they can set their password.',
             self::PasswordChanged => 'Security alert after a password is changed or reset.',
+            self::CustomerImported => 'Sent to customers added by import, with their email and temporary password. They choose their own password when they first sign in.',
             self::CustomerMessage => 'Messages staff send to selected customers from the Customers page. Subject and message are what staff type.',
             self::InvoiceIssued => 'Sent when the team raises an invoice for a customer.',
             self::PaymentReceipt => 'Sent when a payment succeeds, with a link to the receipt.',
@@ -272,6 +275,7 @@ enum EmailTemplateKey: string
             self::EmailVerification, self::PasswordReset => $common + ['expires_minutes' => 'Minutes until the link expires'],
             self::StaffInvite => $common + ['role' => 'Their staff role', 'invited_by' => 'Who invited them', 'expires_minutes' => 'Minutes until the link expires'],
             self::PasswordChanged => $common + ['changed_at' => 'Date and time of the change'],
+            self::CustomerImported => $common + ['email' => 'The email they sign in with', 'temporary_password' => 'The temporary password staff set for the import'],
             self::CustomerMessage => $common + ['subject' => 'The subject staff typed', 'message' => 'The message staff typed'],
             self::InvoiceIssued => $common + ['invoice_number' => 'Invoice number', 'amount' => 'Amount due', 'due_date' => 'Due date'],
             self::PaymentReceipt => $common + ['invoice_number' => 'Invoice number', 'amount' => 'Amount paid', 'receipt_number' => 'Receipt number', 'payment_method' => 'How they paid'],
@@ -348,6 +352,13 @@ enum EmailTemplateKey: string
                 'body' => "{{invited_by}} has added you to {{app_name}} as {{role}}.\n\nSet your password to sign in to the admin console. This link expires in {{expires_minutes}} minutes.",
                 'button_text' => 'Set my password',
                 'footer' => 'If you think this was sent by mistake, please let us know.',
+            ],
+            self::CustomerImported => [
+                'subject' => 'Your {{app_name}} account is ready',
+                'heading' => 'Welcome, {{first_name}}!',
+                'body' => "We've moved to a new {{app_name}} website, and your account is ready for you.\n\nSign in with your email address, {{email}}, and this temporary password: {{temporary_password}}\n\nYou'll be asked to choose your own password straight after you sign in.",
+                'button_text' => 'Sign in',
+                'footer' => "If you weren't expecting this, you can ignore this email or let us know.",
             ],
             self::PasswordChanged => [
                 'subject' => 'Your {{app_name}} password was changed',

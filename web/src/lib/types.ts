@@ -17,12 +17,20 @@ export type User = {
   status: "active" | "suspended";
   avatar_url: string | null;
   email_verified: boolean;
+  /** Imported with a temporary password; must choose their own before using the site. */
+  must_change_password?: boolean;
   roles: { name: RoleName; label: string }[];
   /** Staff only. `["*"]` means Super Admin. */
   permissions?: string[];
   last_login_at: string | null;
   created_at: string | null;
 };
+
+export type CustomerImportResult = "new" | "guest" | "exists" | "invalid";
+
+export type CustomerImportRow = { row: number; name: string; email: string; phone: string; result: CustomerImportResult; note: string | null };
+
+export type CustomerImportSummary = { total: number } & Record<CustomerImportResult, number>;
 
 export type Paginated<T> = {
   data: T[];

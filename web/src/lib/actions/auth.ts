@@ -31,6 +31,9 @@ export async function login(_prev: FormState, formData: FormData): Promise<FormS
   }
 
   await setSessionToken(result.token);
+  if (result.user.must_change_password) {
+    redirect("/choose-password");
+  }
   const home = homeFor(result.user);
   const next = safeNext(field(formData, "next"), home);
   // Customers can't use admin links and staff don't use the customer dashboard.

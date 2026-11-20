@@ -7,6 +7,7 @@ use App\Http\Resources\UserResource;
 use App\Notifications\PasswordChangedNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 
@@ -43,12 +44,35 @@ class ProfileController extends Controller
         ]);
 
         $user = $request->user();
-        $user->update(['password' => $validated['password']]);
+        $user->forceFill(['password' => $validated['password'], 'must_change_password' => false])->save();
 
         // Keep the current device signed in, revoke the rest.
         $user->tokens()->where('id', '!=', $user->currentAccessToken()->id)->delete();
         $user->notify(new PasswordChangedNotification(now()));
 
         return response()->json(['message' => 'Password updated.']);
+    }
+
+    /**
+     * First sign-in after an import: swap the temporary password for one of their own.
+     * They have just signed in with the temporary one, so it isn't asked for again.
+     */
+    public function replaceTemporaryPassword(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user->must_change_password, 409, 'Your password has already been set. Change it from Settings.');
+
+        $validated = $request->validate([
+            'password' => ['required', 'confirmed', Password::defaults(), function (string $attribute, string $value, \Closure $fail) use ($user): void {
+                if (Hash::check($value, $user->password)) {
+                    $fail('Choose a new password, not the temporary one you were given.');
+                }
+            }],
+        ]);
+
+        $user->forceFill(['password' => $validated['password'], 'must_change_password' => false])->save();
+        $user->tokens()->where('id', '!=', $user->currentAccessToken()->id)->delete();
+
+        return response()->json(['message' => 'Your password is set.', 'user' => new UserResource($user)]);
     }
 }

@@ -1,8 +1,10 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { redirect } from "next/navigation";
 import { api, toFormState } from "@/lib/api";
-import type { FormState } from "@/lib/types";
+import { homeFor } from "@/lib/session";
+import type { FormState, User } from "@/lib/types";
 
 export async function updateProfile(_prev: FormState, formData: FormData): Promise<FormState> {
   const values = {
@@ -34,4 +36,21 @@ export async function updatePassword(_prev: FormState, formData: FormData): Prom
   } catch (error) {
     return toFormState(error);
   }
+}
+
+/** First sign-in after an import: replaces the temporary password, then opens their home page. */
+export async function chooseOwnPassword(_prev: FormState, formData: FormData): Promise<FormState> {
+  let user: User;
+  try {
+    ({ user } = await api<{ message: string; user: User }>("/profile/temporary-password", {
+      method: "PUT",
+      body: {
+        password: String(formData.get("password") ?? ""),
+        password_confirmation: String(formData.get("password_confirmation") ?? ""),
+      },
+    }));
+  } catch (error) {
+    return toFormState(error);
+  }
+  redirect(homeFor(user));
 }

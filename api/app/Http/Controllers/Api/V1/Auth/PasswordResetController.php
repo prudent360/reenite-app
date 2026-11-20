@@ -43,6 +43,7 @@ class PasswordResetController extends Controller
                 $user->forceFill([
                     'password' => $password,
                     'remember_token' => Str::random(60),
+                    'must_change_password' => false,
                     // A guest who sets a password this way now has a normal account.
                     'status' => $user->isGuest() ? User::STATUS_ACTIVE : $user->status,
                 ])->save();

@@ -1,8 +1,8 @@
 "use server";
 
 import { refresh } from "next/cache";
-import { api, toFormState } from "@/lib/api";
-import type { FormState } from "@/lib/types";
+import { api, apiUpload, toFormState } from "@/lib/api";
+import type { CustomerImportRow, CustomerImportSummary, FormState } from "@/lib/types";
 
 export async function inviteStaff(_prev: FormState, formData: FormData): Promise<FormState> {
   const values = {
@@ -89,6 +89,30 @@ export async function messageCustomers(ids: number[], input: { subject: string; 
   try {
     const result = await api<{ recipients: number; message: string }>("/admin/customers/bulk/message", { method: "POST", body: { ids, ...input } });
     return { ok: true, message: result.message, count: result.recipients };
+  } catch (error) {
+    return toFormState(error);
+  }
+}
+
+export type CustomerImportState = FormState & { summary?: CustomerImportSummary; rows?: CustomerImportRow[]; imported?: number };
+
+/**
+ * Checks a customers CSV (`preview`) or imports it. The file is sent again for the import, so
+ * nothing is kept on the server between the two steps.
+ */
+export async function importCustomers(file: File, options: { preview: true } | { preview: false; temporaryPassword: string; sendEmail: boolean }): Promise<CustomerImportState> {
+  const form = new FormData();
+  form.set("file", file, file.name);
+  form.set("preview", options.preview ? "1" : "0");
+  if (!options.preview) {
+    form.set("temporary_password", options.temporaryPassword);
+    form.set("send_email", options.sendEmail ? "1" : "0");
+  }
+
+  try {
+    const result = await apiUpload<{ summary: CustomerImportSummary; rows?: CustomerImportRow[]; imported?: number; message?: string }>("/admin/customers/import", form);
+    if (!options.preview) refresh();
+    return { ok: true, ...result };
   } catch (error) {
     return toFormState(error);
   }

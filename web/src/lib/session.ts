@@ -47,6 +47,9 @@ export async function requireUser(): Promise<User> {
     const current = (await headers()).get("x-reenite-path");
     redirect(current ? `/auth/expired?${new URLSearchParams({ next: current })}` : "/auth/expired");
   }
+  if (user.must_change_password) {
+    redirect("/choose-password");
+  }
   return user;
 }
 
