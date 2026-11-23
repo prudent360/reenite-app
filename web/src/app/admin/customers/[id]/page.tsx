@@ -16,6 +16,17 @@ import { formatDate, formatDateTime, formatNaira } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Customer" };
 
+const EMPTY_OVERVIEW: CustomerOverview = {
+  totals: { bookings: 0, orders: 0, consultations: 0, paid: 0, outstanding: 0 },
+  bookings: [],
+  orders: [],
+  invoices: [],
+  consultations: [],
+  plans: [],
+  businesses: [],
+  mailboxes: [],
+};
+
 type Tone = "success" | "warning" | "danger" | "info" | "neutral";
 
 /** One colour per kind of status, whichever record it belongs to. */
@@ -41,7 +52,10 @@ async function CustomerDetail({ id }: { id: string }) {
   let customer: User;
   let overview: CustomerOverview;
   try {
-    ({ data: customer, overview } = await api<{ data: User; overview: CustomerOverview }>(`/admin/customers/${encodeURIComponent(id)}`));
+    const response = await api<{ data: User; overview?: CustomerOverview }>(`/admin/customers/${encodeURIComponent(id)}`);
+    customer = response.data;
+    // An API that hasn't been updated yet sends the profile alone; show it with empty history.
+    overview = { ...EMPTY_OVERVIEW, ...response.overview };
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) notFound();
     throw error;

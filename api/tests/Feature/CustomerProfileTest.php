@@ -6,7 +6,11 @@ use App\Enums\InvoiceStatus;
 use App\Enums\Role;
 use App\Models\Booking;
 use App\Models\Business;
+use App\Models\Consultation;
+use App\Models\CustomerMembership;
+use App\Models\CustomerPass;
 use App\Models\Invoice;
+use App\Models\Mailbox;
 use App\Models\Order;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -35,6 +39,10 @@ class CustomerProfileTest extends TestCase
         Invoice::factory()->for($customer)->create(['status' => InvoiceStatus::Unpaid, 'total' => 300000, 'amount_paid' => 100000, 'amount_refunded' => 0]);
         Invoice::factory()->for($customer)->create(['status' => InvoiceStatus::Void, 'total' => 900000, 'amount_paid' => 0, 'amount_refunded' => 0]);
         Booking::factory()->for(User::factory())->create();
+        Consultation::factory()->for($customer)->create();
+        CustomerPass::factory()->for($customer)->create();
+        CustomerMembership::factory()->for($customer)->create();
+        Mailbox::factory()->for($customer)->create();
 
         $this->actingAs($frontDesk)->getJson("/api/v1/admin/customers/{$customer->id}")
             ->assertOk()
@@ -45,7 +53,10 @@ class CustomerProfileTest extends TestCase
             ->assertJsonPath('overview.totals.outstanding', 200000)
             ->assertJsonCount(1, 'overview.bookings')
             ->assertJsonCount(3, 'overview.invoices')
-            ->assertJsonPath('overview.businesses.0.name', 'Bassey Ventures');
+            ->assertJsonPath('overview.businesses.0.name', 'Bassey Ventures')
+            ->assertJsonCount(1, 'overview.consultations')
+            ->assertJsonCount(2, 'overview.plans')
+            ->assertJsonCount(1, 'overview.mailboxes');
     }
 
     public function test_staff_accounts_are_not_shown_as_customers(): void

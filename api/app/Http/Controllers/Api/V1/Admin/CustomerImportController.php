@@ -12,7 +12,6 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
@@ -68,8 +67,10 @@ class CustomerImportController extends Controller
 
         if ($request->boolean('send_email') && $imported->isNotEmpty()) {
             $notification = new CustomerImportedNotification($validated['temporary_password']);
-            // Hundreds of emails can take a while, so they go out after the response.
-            defer(fn () => Notification::send($imported, $notification));
+            // Hundreds of emails can take a while, so they go out after the response. Each is sent on
+            // its own (User::notify logs a failure and carries on), so one bad address or mail-server
+            // hiccup doesn't stop everyone after it from getting theirs.
+            defer(fn () => $imported->each(fn (User $customer) => $customer->notify($notification)));
         }
 
         $count = $imported->count();

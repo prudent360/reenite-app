@@ -15,7 +15,6 @@ use App\Models\Order;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -61,8 +60,11 @@ class UserController extends Controller
                 'bookings' => $user->bookings()->count(),
                 'orders' => $user->orders()->count(),
                 'consultations' => $user->consultations()->count(),
-                'paid' => (int) (clone $invoices)->sum(DB::raw('amount_paid - amount_refunded')),
-                'outstanding' => (int) (clone $invoices)->where('status', InvoiceStatus::Unpaid->value)->sum(DB::raw('total - amount_paid')),
+                // Each column is summed on its own and subtracted here: the columns are unsigned, and
+                // MySQL refuses "a - b" in SQL whenever one row would go below zero.
+                'paid' => max(0, (int) (clone $invoices)->sum('amount_paid') - (int) (clone $invoices)->sum('amount_refunded')),
+                'outstanding' => (int) (clone $invoices)->where('status', InvoiceStatus::Unpaid->value)->get(['total', 'amount_paid'])
+                    ->sum(fn (Invoice $invoice) => max(0, $invoice->total - $invoice->amount_paid)),
             ],
             'bookings' => $latest('bookings', 'starts_at')->map(fn (Booking $booking) => [
                 'reference' => $booking->reference,
