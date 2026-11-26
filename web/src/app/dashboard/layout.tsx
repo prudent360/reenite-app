@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { AppShell, SidebarNav } from "@/components/app/app-shell";
 import { CommandPalette } from "@/components/app/command-palette";
 import { NotificationMenu, NotificationMenuSkeleton } from "@/components/app/notification-menu";
+import { StaffSessionBanner } from "@/components/app/staff-session-banner";
 import { UserMenu, UserMenuSkeleton } from "@/components/app/user-menu";
 import { loadNotifications } from "@/lib/actions/notifications";
 import { requireCustomer } from "@/lib/session";
@@ -23,6 +24,9 @@ export default function DashboardLayout({ children }: LayoutProps<"/dashboard">)
         </Suspense>
       }
     >
+      <Suspense fallback={null}>
+        <StaffSession />
+      </Suspense>
       {children}
     </AppShell>
   );
@@ -36,6 +40,11 @@ async function CustomerUserMenu() {
       settingsHref="/dashboard/settings"
     />
   );
+}
+
+async function StaffSession() {
+  const user = await requireCustomer();
+  return user.signed_in_by ? <StaffSessionBanner customerName={user.name} staffName={user.signed_in_by.name} /> : null;
 }
 
 async function Notifications() {

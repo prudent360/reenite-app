@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
 use App\Models\ActivityLog;
 use App\Models\User;
+use App\Support\Impersonation;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -98,6 +99,18 @@ class AuthController extends Controller
     {
         $request->user()->currentAccessToken()?->delete();
         ActivityLog::record(ActivityLog::LOGOUT, 'Signed out', $request->user(), $request);
+
+        return response()->noContent();
+    }
+
+    /**
+     * Ends a staff member's session as a customer. The web app then returns them to their own session.
+     */
+    public function stopImpersonating(Request $request): Response
+    {
+        abort_if(Impersonation::staff($request) === null, 404);
+
+        $request->user()->currentAccessToken()->delete();
 
         return response()->noContent();
     }

@@ -307,8 +307,8 @@ class ConsultationService
             ->whereIn('status', [PaymentStatus::Success->value, PaymentStatus::PartiallyRefunded->value])
             ->latest('id')
             ->first();
-        if (! $payment || $payment->isBankTransfer()) {
-            return; // Finance refunds bank transfers by hand.
+        if (! $payment || ! $payment->isOnline()) {
+            return; // Finance refunds bank transfers and desk payments by hand.
         }
 
         try {

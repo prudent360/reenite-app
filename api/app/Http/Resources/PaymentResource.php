@@ -2,7 +2,6 @@
 
 namespace App\Http\Resources;
 
-use App\Enums\PaymentGatewayCode;
 use App\Models\Payment;
 use App\Models\Refund;
 use Illuminate\Http\Request;
@@ -32,7 +31,7 @@ class PaymentResource extends JsonResource
             ]),
             'customer' => $this->whenLoaded('user', fn () => ['id' => $this->user->id, 'name' => $this->user->name, 'email' => $this->user->email, 'phone' => $this->user->phone]),
             'gateway' => $this->gateway,
-            'gateway_label' => $this->isBankTransfer() ? 'Bank transfer' : (PaymentGatewayCode::tryFrom($this->gateway)?->label() ?? $this->gateway),
+            'gateway_label' => $this->methodLabel(),
             'mode' => $this->mode,
             'amount' => $this->amount,
             'currency' => $this->currency,

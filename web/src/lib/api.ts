@@ -11,6 +11,8 @@ export const API_URL = (process.env.API_URL ?? "http://localhost:8000").replace(
  */
 export const RETRY_SOON = { stale: 30, revalidate: 60, expire: 300 };
 export const TOKEN_COOKIE = "reenite_token";
+/** A staff member's own token, kept aside while they are signed in as a customer. */
+export const STAFF_TOKEN_COOKIE = "reenite_staff_token";
 
 export class ApiError extends Error {
   constructor(

@@ -38,6 +38,21 @@ export async function submitBankTransfer(invoiceId: number, _prev: FormState, fo
   return { ok: true, message: "Thanks! We've received your transfer details and will confirm them shortly." };
 }
 
+/** Cash or POS taken at the front desk. Only works while staff are signed in as the customer. */
+export async function recordDeskPayment(invoiceId: number, _prev: FormState, formData: FormData): Promise<FormState> {
+  const values = { channel: String(formData.get("channel") ?? ""), note: String(formData.get("note") ?? "").trim() };
+  try {
+    const { message } = await api<{ message: string }>(`/billing/invoices/${invoiceId}/desk-payment`, {
+      method: "POST",
+      body: { channel: values.channel, note: values.note || null },
+    });
+    refresh();
+    return { ok: true, message };
+  } catch (error) {
+    return toFormState(error, values);
+  }
+}
+
 /** Adds a discount code to an unpaid invoice. The API decides the discount. */
 export async function applyCoupon(invoiceId: number, code: string): Promise<FormState> {
   try {

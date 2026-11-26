@@ -12,7 +12,7 @@ abstract class BillingNotification extends TemplatedNotification
 {
     public static function methodLabel(Payment $payment): string
     {
-        return $payment->isBankTransfer() ? 'bank transfer' : ucfirst($payment->gateway);
+        return $payment->isOnline() ? $payment->methodLabel() : mb_strtolower($payment->methodLabel());
     }
 
     /**

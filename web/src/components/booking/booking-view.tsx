@@ -130,6 +130,7 @@ export async function BookingView({ reference, token, paid, inDashboard = false 
           pay={payBooking.bind(null, booking.reference, token)}
           transfer={submitBookingTransfer.bind(null, booking.reference, token)}
           coupon={{ apply: applyBookingCoupon.bind(null, booking.reference, token), remove: removeBookingCoupon.bind(null, booking.reference, token) }}
+          atDesk={Boolean(user?.signed_in_by)}
         />
       )}
 

@@ -29,7 +29,7 @@ export default function CustomerInvoicePage({ params }: PageProps<"/dashboard/bi
 }
 
 async function InvoiceView({ id }: { id: string }) {
-  await requireCustomer();
+  const viewer = await requireCustomer();
   let invoice: Invoice;
   try {
     ({ data: invoice } = await api<{ data: Invoice }>(`/billing/invoices/${Number(id) || 0}`));
@@ -106,7 +106,7 @@ async function InvoiceView({ id }: { id: string }) {
               {rejected.review_note}
             </Alert>
           )}
-          {options && <PayPanel invoice={invoice} options={options} />}
+          {options && <PayPanel invoice={invoice} options={options} atDesk={Boolean(viewer.signed_in_by)} />}
         </div>
       </div>
     </>

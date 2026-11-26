@@ -1,7 +1,9 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { api, toFormState } from "@/lib/api";
+import { STAFF_TOKEN_COOKIE, api, toFormState } from "@/lib/api";
+import { backToAdmin } from "@/lib/actions/staff-session";
 import { clearSessionToken, homeFor, setSessionToken } from "@/lib/session";
 import type { FormState, User } from "@/lib/types";
 
@@ -31,6 +33,8 @@ export async function login(_prev: FormState, formData: FormData): Promise<FormS
   }
 
   await setSessionToken(result.token);
+  // A fresh sign-in replaces any staff session that was kept aside.
+  (await cookies()).delete(STAFF_TOKEN_COOKIE);
   if (result.user.must_change_password) {
     redirect("/choose-password");
   }
@@ -74,6 +78,11 @@ export async function register(_prev: FormState, formData: FormData): Promise<Fo
  * because Next keeps visited pages mounted (hidden) and the old account's data must not linger.
  */
 export async function logout(): Promise<void> {
+  // Signing out while signed in as a customer goes back to the staff member's own session.
+  if ((await cookies()).has(STAFF_TOKEN_COOKIE)) {
+    await backToAdmin();
+    return;
+  }
   try {
     await api("/auth/logout", { method: "POST" });
   } catch {

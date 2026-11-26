@@ -1,9 +1,9 @@
 "use client";
 
 import { useActionState, useEffect, useState, useTransition } from "react";
-import { AlertCircle, Check, Copy, CreditCard, Landmark, Lock, ShieldCheck, Upload } from "lucide-react";
+import { AlertCircle, Banknote, Check, Copy, CreditCard, Landmark, Lock, ShieldCheck, Upload } from "lucide-react";
 import { toast } from "sonner";
-import { startPayment, submitBankTransfer } from "@/lib/actions/billing";
+import { recordDeskPayment, startPayment, submitBankTransfer } from "@/lib/actions/billing";
 import type { FormState, Invoice, PaymentOptions } from "@/lib/types";
 import { MAX_UPLOAD_LABEL, uploadTooLarge } from "@/lib/uploads";
 import { cn, formatNaira } from "@/lib/utils";
@@ -13,7 +13,7 @@ import { DotLoader } from "@/components/ui/loader";
 import { SubmitButton, TextField } from "@/components/ui/form";
 import { CouponBox, type CouponActions } from "./coupon-box";
 
-type Method = string; // gateway code or "bank_transfer"
+type Method = string; // gateway code, "bank_transfer" or "desk"
 
 type PayAction = (gateway: string) => Promise<FormState & { data?: { redirect_url: string } }>;
 type TransferAction = (prev: FormState, formData: FormData) => Promise<FormState>;
@@ -21,7 +21,7 @@ type TransferAction = (prev: FormState, formData: FormData) => Promise<FormState
 /**
  * Online payment and bank transfer for an invoice, with a discount code box. Bookings pass their own
  * `pay`, `transfer` and `coupon` actions (guests have no billing pages); otherwise the invoice's
- * billing actions are used.
+ * billing actions are used. `atDesk` adds "Paid at desk" for staff signed in as the customer.
  */
 export function PayPanel({
   invoice,
@@ -30,6 +30,7 @@ export function PayPanel({
   pay,
   transfer,
   coupon,
+  atDesk = false,
 }: {
   invoice: Invoice;
   options: PaymentOptions;
@@ -37,8 +38,10 @@ export function PayPanel({
   pay?: PayAction;
   transfer?: TransferAction;
   coupon?: CouponActions;
+  atDesk?: boolean;
 }) {
   const methods = [
+    ...(atDesk ? [{ key: "desk", label: "Paid at desk", description: "Cash or POS you've taken from the customer. Only staff see this option.", test: false }] : []),
     ...options.gateways.map((gateway) => ({ key: gateway.code, label: gateway.label, description: gateway.description, test: gateway.mode === "test" })),
     ...(options.bank_transfer.enabled ? [{ key: "bank_transfer", label: "Bank transfer", description: "Pay into our account, then upload your receipt.", test: false }] : []),
   ];
@@ -96,7 +99,7 @@ export function PayPanel({
               )}
             >
               <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-lg", method === option.key ? "bg-brand-500 text-white" : "bg-navy-50 text-foreground")}>
-                {option.key === "bank_transfer" ? <Landmark className="size-5" /> : <CreditCard className="size-5" />}
+                {option.key === "bank_transfer" ? <Landmark className="size-5" /> : option.key === "desk" ? <Banknote className="size-5" /> : <CreditCard className="size-5" />}
               </span>
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-2 font-semibold text-foreground">
@@ -117,7 +120,7 @@ export function PayPanel({
           </Alert>
         )}
 
-        {method && method !== "bank_transfer" && (
+        {method && method !== "bank_transfer" && method !== "desk" && (
           <>
             {canSaveCard && (
               <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border p-3.5 text-sm">
@@ -142,8 +145,44 @@ export function PayPanel({
         )}
 
         {method === "bank_transfer" && <BankTransferForm invoice={invoice} options={options} transfer={transfer} />}
+        {method === "desk" && <DeskPaymentForm invoice={invoice} />}
       </div>
     </Card>
+  );
+}
+
+function DeskPaymentForm({ invoice }: { invoice: Invoice }) {
+  // Toast straight away: once paid, the page re-renders without this form, so an effect would never run.
+  const [state, action] = useActionState<FormState, FormData>(async (previous, formData) => {
+    const result = await recordDeskPayment(invoice.id, previous, formData);
+    if (result.ok) toast.success(result.message);
+    else if (result.message) toast.error(result.message);
+    return result;
+  }, {});
+
+  return (
+    <form action={action} className="space-y-4" noValidate>
+      <fieldset>
+        <legend className="text-sm font-medium text-foreground">How did they pay?</legend>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          {[
+            ["cash", "Cash"],
+            ["pos", "POS"],
+          ].map(([value, label]) => (
+            <label key={value} className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-border p-3 text-sm font-medium has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50/50">
+              <input type="radio" name="channel" value={value} defaultChecked={(state.values?.channel ?? "cash") === value} className="size-4 accent-brand-500" />
+              {label}
+            </label>
+          ))}
+        </div>
+        {state.errors?.channel && <p className="mt-1.5 text-[13px] text-danger">{state.errors.channel[0]}</p>}
+      </fieldset>
+      <TextField label="Note (optional)" name="note" placeholder="e.g. POS receipt number" maxLength={255} defaultValue={state.values?.note} error={state.errors?.note} />
+      <SubmitButton size="lg" className="w-full">
+        Record {formatNaira(invoice.balance)} paid
+      </SubmitButton>
+      <p className="text-center text-xs text-muted">Only record this once you have the money. The customer gets a receipt by email.</p>
+    </form>
   );
 }
 

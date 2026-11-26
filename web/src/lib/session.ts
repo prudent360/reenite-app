@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { ApiError, TOKEN_COOKIE, api } from "./api";
+import { ApiError, STAFF_TOKEN_COOKIE, TOKEN_COOKIE, api } from "./api";
 import type { User } from "./types";
 
 const THIRTY_DAYS = 60 * 60 * 24 * 30;
@@ -19,6 +19,17 @@ export async function setSessionToken(token: string) {
 
 export async function clearSessionToken() {
   (await cookies()).delete(TOKEN_COOKIE);
+}
+
+/** Keeps a staff member's own token aside while they are signed in as a customer. */
+export async function setStaffTokenAside(token: string) {
+  (await cookies()).set(STAFF_TOKEN_COOKIE, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: THIRTY_DAYS,
+  });
 }
 
 /** The signed-in user, or null. Deduplicated per request. */
@@ -47,7 +58,8 @@ export async function requireUser(): Promise<User> {
     const current = (await headers()).get("x-reenite-path");
     redirect(current ? `/auth/expired?${new URLSearchParams({ next: current })}` : "/auth/expired");
   }
-  if (user.must_change_password) {
+  // Staff signed in as a customer must never choose the customer's password for them.
+  if (user.must_change_password && !user.signed_in_by) {
     redirect("/choose-password");
   }
   return user;

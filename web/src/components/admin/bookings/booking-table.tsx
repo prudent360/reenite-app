@@ -12,6 +12,7 @@ const dayKey = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Lagos" });
 const paidVia: Record<NonNullable<Booking["paid_via"]>, string> = {
   online: "Online",
   bank_transfer: "Bank transfer",
+  desk: "At the desk",
   pass: "Pass credits",
   free: "No charge",
   coupon: "Discount code",

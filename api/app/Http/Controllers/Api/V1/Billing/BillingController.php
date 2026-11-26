@@ -12,6 +12,8 @@ use App\Models\PaymentGateway;
 use App\Payments\CouponService;
 use App\Payments\GatewayException;
 use App\Payments\PaymentService;
+use App\Support\Impersonation;
+use App\Support\Money;
 use App\Support\Settings;
 use App\Uploads\UploadLimit;
 use Illuminate\Http\JsonResponse;
@@ -122,6 +124,28 @@ class BillingController extends Controller
         $payment = $this->payments->submitBankTransfer($invoice, $request->user(), $request->file('proof'), $validated['sender_name'], $validated['transferred_on']);
 
         return (new PaymentResource($payment))->response()->setStatusCode(Response::HTTP_CREATED);
+    }
+
+    /**
+     * Cash or POS taken at the front desk. Only staff signed in as the customer can record it.
+     */
+    public function deskPayment(Request $request, Invoice $invoice): JsonResponse
+    {
+        $this->authorizeOwner($request, $invoice->user_id);
+        $staff = Impersonation::staff($request);
+        abort_if($staff === null, 403, 'Payments at the desk are recorded by our staff.');
+
+        $validated = $request->validate([
+            'channel' => ['required', Rule::in(array_keys(Payment::DESK_CHANNELS))],
+            'note' => ['nullable', 'string', 'max:255'],
+        ], ['channel.required' => 'Choose cash or POS.']);
+
+        $payment = $this->payments->recordDeskPayment($invoice, $request->user(), $staff, $validated['channel'], $validated['note'] ?? null);
+
+        return response()->json([
+            'data' => new PaymentResource($payment),
+            'message' => 'Payment of '.Money::format($payment->amount).' recorded. A receipt is on its way to '.$request->user()->email.'.',
+        ], Response::HTTP_CREATED);
     }
 
     public function payments(Request $request): AnonymousResourceCollection

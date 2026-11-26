@@ -28,7 +28,7 @@ export default function ConsultationPage({ params }: PageProps<"/dashboard/consu
 }
 
 async function ConsultationDetail({ reference }: { reference: string }) {
-  await requireCustomer();
+  const viewer = await requireCustomer();
   let consultation: Consultation;
   try {
     ({ data: consultation } = await api<{ data: Consultation }>(`/consultations/${encodeURIComponent(reference)}`));
@@ -108,7 +108,7 @@ async function ConsultationDetail({ reference }: { reference: string }) {
           {consultation.can_cancel && <CancelConsultation consultation={consultation} />}
         </div>
 
-        <div className="space-y-6">{options && invoice && <PayPanel invoice={invoice} options={options} title="Pay for your consultation" />}</div>
+        <div className="space-y-6">{options && invoice && <PayPanel invoice={invoice} options={options} title="Pay for your consultation" atDesk={Boolean(viewer.signed_in_by)} />}</div>
       </div>
     </>
   );

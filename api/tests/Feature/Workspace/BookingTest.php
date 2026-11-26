@@ -515,6 +515,28 @@ class BookingTest extends TestCase
         $this->postJson("/api/v1/admin/bookings/{$reference}/transfer/approve")->assertNotFound();
     }
 
+    public function test_front_desk_books_for_a_customer_and_takes_cash_at_the_desk(): void
+    {
+        Notification::fake();
+        $frontDesk = User::factory()->staff()->create()->assignRole(Role::FrontDesk->value);
+        $customer = User::factory()->create(['name' => 'Ifiok Etim'])->assignRole(Role::Customer->value);
+
+        $token = $this->signIn($frontDesk)->postJson("/api/v1/admin/customers/{$customer->id}/sign-in")->assertOk()->json('token');
+        $this->app['auth']->forgetGuards();
+
+        $booking = $this->withToken($token)->postJson('/api/v1/bookings', $this->roomBooking())->assertCreated()->json('data');
+        $this->assertSame($customer->id, Booking::where('reference', $booking['reference'])->value('user_id'));
+
+        $this->app['auth']->forgetGuards();
+        $this->withToken($token)->postJson("/api/v1/billing/invoices/{$booking['invoice']['id']}/desk-payment", ['channel' => 'cash'])->assertCreated();
+
+        $this->app['auth']->forgetGuards();
+        $this->withToken($token)->getJson("/api/v1/bookings/{$booking['reference']}")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'confirmed')
+            ->assertJsonPath('data.paid_via', 'desk');
+    }
+
     public function test_staff_reject_a_bank_transfer_they_cannot_find(): void
     {
         Notification::fake();

@@ -5,6 +5,7 @@ import { Suspense, type ReactNode } from "react";
 import { ArrowLeft, Building2, CalendarDays, ClipboardList, FileText, Mail, MessagesSquare, Ticket } from "lucide-react";
 import { CustomerStatusButton } from "@/components/admin/customer-status-button";
 import { MessageCustomerButton } from "@/components/admin/customers/message-customer-button";
+import { SignInAsCustomerButton } from "@/components/admin/customers/sign-in-as-customer-button";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge, Card, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/loader";
@@ -61,6 +62,7 @@ async function CustomerDetail({ id }: { id: string }) {
     throw error;
   }
   const canManage = can(viewer, "customers.manage");
+  const canSignInAs = can(viewer, "customers.impersonate") && customer.status === "active";
   const { totals } = overview;
 
   return (
@@ -82,10 +84,15 @@ async function CustomerDetail({ id }: { id: string }) {
               </div>
             </div>
           </div>
-          {canManage && (
+          {(canManage || canSignInAs) && (
             <div className="flex shrink-0 flex-wrap gap-2">
-              <MessageCustomerButton customer={customer} />
-              <CustomerStatusButton userId={customer.id} name={customer.name} status={customer.status} />
+              {canSignInAs && <SignInAsCustomerButton customerId={customer.id} name={customer.name} />}
+              {canManage && (
+                <>
+                  <MessageCustomerButton customer={customer} />
+                  <CustomerStatusButton userId={customer.id} name={customer.name} status={customer.status} />
+                </>
+              )}
             </div>
           )}
         </div>

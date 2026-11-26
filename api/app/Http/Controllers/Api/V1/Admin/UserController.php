@@ -15,6 +15,7 @@ use App\Models\Mailbox;
 use App\Models\Order;
 use App\Models\User;
 use App\Notifications\CustomerAddedNotification;
+use App\Support\Impersonation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -168,6 +169,28 @@ class UserController extends Controller
             ->additional(['message' => "{$customer->name} has been added. We've emailed {$customer->email} a link to set their password."])
             ->response()
             ->setStatusCode(Response::HTTP_CREATED);
+    }
+
+    /**
+     * Signs the staff member in as this customer, e.g. to book a space for them. Returns a token for
+     * the customer that expires after a few hours and remembers who opened it; the web app keeps the
+     * staff member's own session aside and goes back to it afterwards.
+     */
+    public function impersonate(Request $request, User $user): JsonResponse
+    {
+        abort_if($user->isStaff(), 404);
+        abort_unless($user->isActive(), 422, $user->isGuest()
+            ? "{$user->name} booked as a guest and has no account yet. Add them as a customer first."
+            : "{$user->name}'s account is suspended. Reactivate it first.");
+
+        $token = $user->createToken(Impersonation::TOKEN_NAME, ['*'], now()->addHours(Impersonation::HOURS));
+        $token->accessToken->forceFill(['impersonator_id' => $request->user()->id])->save();
+
+        return response()->json([
+            'token' => $token->plainTextToken,
+            'user' => new UserResource($user),
+            'expires_at' => $token->accessToken->expires_at->toIso8601String(),
+        ]);
     }
 
     public function updateStatus(Request $request, User $user): UserResource

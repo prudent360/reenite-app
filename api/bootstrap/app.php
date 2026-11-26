@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\AcceptUploadGrant;
 use App\Http\Middleware\EnsureUserIsStaff;
+use App\Http\Middleware\GuardImpersonation;
 use App\Http\Middleware\LogAdminActivity;
 use App\Http\Middleware\TrustWebApp;
 use Illuminate\Foundation\Application;
@@ -26,6 +27,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append(TrustWebApp::class);
         // Browsers upload files straight to the API with a short-lived grant (see App\Uploads\UploadGrant).
         $middleware->append(AcceptUploadGrant::class);
+        // Staff signed in as a customer: checks they still may, blocks a few routes and logs their changes.
+        $middleware->api(prepend: [GuardImpersonation::class]);
         $middleware->alias([
             'staff' => EnsureUserIsStaff::class,
             'audit' => LogAdminActivity::class,

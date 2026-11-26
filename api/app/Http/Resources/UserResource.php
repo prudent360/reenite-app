@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Enums\Role;
 use App\Models\User;
+use App\Support\Impersonation;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Storage;
@@ -44,6 +45,12 @@ class UserResource extends JsonResource
                 $this->isStaff(),
                 fn () => $this->isSuperAdmin() ? ['*'] : $this->getAllPermissions()->pluck('name')->values(),
             ),
+            // Set when a staff member is signed in as this customer, so the app can show who and offer a way back.
+            'signed_in_by' => $this->when($request->user()?->is($this->resource) === true, function () use ($request) {
+                $staff = Impersonation::staff($request);
+
+                return $staff ? ['id' => $staff->id, 'name' => $staff->name] : null;
+            }),
             'last_login_at' => $this->last_login_at?->toIso8601String(),
             'created_at' => $this->created_at?->toIso8601String(),
         ];

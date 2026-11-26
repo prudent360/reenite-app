@@ -90,7 +90,11 @@ class ReportController extends Controller
             'payment_methods' => $payments
                 ->groupBy('gateway')
                 ->map(fn (Collection $group, string $gateway) => [
-                    'method' => $gateway === Payment::BANK_TRANSFER ? 'Bank transfer' : ucfirst($gateway),
+                    'method' => match ($gateway) {
+                        Payment::BANK_TRANSFER => 'Bank transfer',
+                        Payment::DESK => 'At the desk',
+                        default => ucfirst($gateway),
+                    },
                     'amount' => (int) $group->sum('amount'),
                     'count' => $group->count(),
                 ])
@@ -132,7 +136,7 @@ class ReportController extends Controller
                     $payment->user?->name,
                     $payment->user?->email,
                     $this->source($payment),
-                    $payment->gateway === Payment::BANK_TRANSFER ? 'Bank transfer' : ucfirst($payment->gateway),
+                    $payment->methodLabel(),
                     number_format($payment->amount / 100, 2, '.', ''),
                     number_format($payment->amount_refunded / 100, 2, '.', ''),
                     $payment->invoice?->number,

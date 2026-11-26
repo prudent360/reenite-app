@@ -127,6 +127,7 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::middleware('auth:sanctum')->group(function () {
             Route::get('me', [AuthController::class, 'me'])->name('me');
             Route::post('logout', [AuthController::class, 'logout'])->name('logout');
+            Route::delete('impersonation', [AuthController::class, 'stopImpersonating'])->name('impersonation.destroy');
             Route::post('email/resend', [EmailVerificationController::class, 'resend'])
                 ->middleware('throttle:3,1')
                 ->name('verification.send');
@@ -201,6 +202,7 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::delete('invoices/{invoice}/coupon', [BillingController::class, 'removeCoupon'])->middleware('throttle:10,1')->name('invoices.coupon.destroy');
             Route::post('invoices/{invoice}/pay', [BillingController::class, 'pay'])->middleware('throttle:10,1')->name('invoices.pay');
             Route::post('invoices/{invoice}/bank-transfer', [BillingController::class, 'bankTransfer'])->middleware('throttle:5,1')->name('invoices.bank-transfer');
+            Route::post('invoices/{invoice}/desk-payment', [BillingController::class, 'deskPayment'])->middleware('throttle:10,1')->name('invoices.desk-payment');
             Route::get('payments', [BillingController::class, 'payments'])->name('payments.index');
             Route::get('payments/{payment:reference}', [BillingController::class, 'payment'])->name('payments.show');
             Route::post('payments/{payment:reference}/verify', [BillingController::class, 'verify'])->middleware('throttle:20,1')->withoutScopedBindings()->name('payments.verify');
@@ -231,6 +233,9 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::post('customers/import', CustomerImportController::class)
                 ->middleware(['permission:customers.manage', 'throttle:20,1'])
                 ->name('customers.import');
+            Route::post('customers/{user}/sign-in', [UserController::class, 'impersonate'])
+                ->middleware(['permission:customers.impersonate', 'throttle:10,1'])
+                ->name('customers.sign-in');
             Route::patch('customers/{user}/status', [UserController::class, 'updateStatus'])
                 ->middleware('permission:customers.manage')
                 ->name('customers.status');

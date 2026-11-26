@@ -266,6 +266,7 @@ class BookingService
         $gateway = $booking->invoice?->payments()->where('status', PaymentStatus::Success->value)->latest('id')->value('gateway');
         $paidVia = match (true) {
             $gateway === Payment::BANK_TRANSFER => 'bank_transfer',
+            $gateway === Payment::DESK => 'desk',
             // A discount code covered the whole invoice, so no money changed hands.
             $gateway === null && $booking->invoice?->coupon_code !== null => 'coupon',
             default => 'online',
@@ -768,7 +769,7 @@ class BookingService
             ->whereIn('status', [PaymentStatus::Success->value, PaymentStatus::PartiallyRefunded->value])
             ->latest('id')
             ->first();
-        if (! $payment || $payment->isBankTransfer()) {
+        if (! $payment || ! $payment->isOnline()) {
             return;
         }
 

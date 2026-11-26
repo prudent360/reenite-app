@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\PaymentGatewayCode;
 use App\Enums\PaymentStatus;
 use Database\Factories\PaymentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -28,6 +29,12 @@ class Payment extends Model
     use HasFactory;
 
     public const BANK_TRANSFER = 'bank_transfer';
+
+    /** Cash or POS taken at the front desk by staff signed in as the customer. `channel` says which. */
+    public const DESK = 'desk';
+
+    /** @var array<string, string> channel => label */
+    public const DESK_CHANNELS = ['cash' => 'Cash', 'pos' => 'POS'];
 
     /**
      * @return array<string, string>
@@ -66,6 +73,31 @@ class Payment extends Model
     public function isBankTransfer(): bool
     {
         return $this->gateway === self::BANK_TRANSFER;
+    }
+
+    public function isDesk(): bool
+    {
+        return $this->gateway === self::DESK;
+    }
+
+    /**
+     * Paid through a gateway, so it can be refunded through one. Transfers and desk payments are refunded by hand.
+     */
+    public function isOnline(): bool
+    {
+        return ! $this->isBankTransfer() && ! $this->isDesk();
+    }
+
+    /**
+     * "Bank transfer", "Cash at desk", "POS at desk" or the gateway's name.
+     */
+    public function methodLabel(): string
+    {
+        return match (true) {
+            $this->isBankTransfer() => 'Bank transfer',
+            $this->isDesk() => (self::DESK_CHANNELS[$this->channel] ?? 'Paid').' at desk',
+            default => PaymentGatewayCode::tryFrom($this->gateway)?->label() ?? ucfirst($this->gateway),
+        };
     }
 
     /**

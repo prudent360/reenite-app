@@ -19,6 +19,8 @@ export type User = {
   email_verified: boolean;
   /** Imported with a temporary password; must choose their own before using the site. */
   must_change_password?: boolean;
+  /** Set when a staff member is signed in as this customer. */
+  signed_in_by?: { id: number; name: string } | null;
   roles: { name: RoleName; label: string }[];
   /** Staff only. `["*"]` means Super Admin. */
   permissions?: string[];
@@ -547,7 +549,7 @@ export type Booking = {
   discount_label: string | null;
   total: number;
   pass_credits_used: number;
-  paid_via: "online" | "bank_transfer" | "pass" | "free" | "coupon" | null;
+  paid_via: "online" | "bank_transfer" | "desk" | "pass" | "free" | "coupon" | null;
   hold_expires_at: string | null;
   /** Held and still within its payment window. */
   hold_active: boolean;

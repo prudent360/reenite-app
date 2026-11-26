@@ -251,6 +251,29 @@ class PaymentService
         return $payment;
     }
 
+    /**
+     * Records cash or POS taken at the front desk by a staff member signed in as the customer. The
+     * staff member is kept as the reviewer, so Finance can see who took the money.
+     */
+    public function recordDeskPayment(Invoice $invoice, User $customer, User $staff, string $channel, ?string $note = null): Payment
+    {
+        abort_unless(array_key_exists($channel, Payment::DESK_CHANNELS), 422, 'Choose cash or POS.');
+        $this->assertPayable($invoice);
+
+        $payment = Payment::create([
+            'reference' => Payment::newReference(),
+            'invoice_id' => $invoice->id,
+            'user_id' => $customer->id,
+            'gateway' => Payment::DESK,
+            'mode' => 'live',
+            'amount' => $invoice->balance(),
+            'currency' => $invoice->currency,
+            'status' => PaymentStatus::Pending,
+        ]);
+
+        return $this->markSucceeded($payment, ['channel' => $channel, 'review_note' => $note], $staff);
+    }
+
     public function approveTransfer(Payment $payment, User $reviewer, ?string $note = null): Payment
     {
         abort_unless($payment->isBankTransfer() && $payment->status === PaymentStatus::AwaitingReview, 422, 'Only transfers awaiting review can be approved.');
@@ -281,7 +304,7 @@ class PaymentService
     public function refund(Payment $payment, int $amount, string $reason, string $method, ?User $staff): Refund
     {
         abort_if($amount < 1 || $amount > $payment->refundable(), 422, 'Refund must be between ₦0.01 and '.Money::format($payment->refundable()).'.');
-        abort_if($method === 'gateway' && $payment->isBankTransfer(), 422, 'Bank transfers are refunded manually.');
+        abort_if($method === 'gateway' && ! $payment->isOnline(), 422, $payment->isDesk() ? 'Desk payments are refunded manually.' : 'Bank transfers are refunded manually.');
 
         $gatewayReference = null;
         if ($method === 'gateway') {
