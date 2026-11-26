@@ -279,12 +279,12 @@ function DashboardPreview() {
             </div>
             <div className="flex items-center gap-3">
               <Bell className="size-4 text-[#5c6488]" />
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#1a2142] text-xs font-bold text-white">AO</span>
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#1a2142] text-xs font-bold text-white">I</span>
             </div>
           </div>
 
-          <h2 className="mt-7 text-xl font-semibold sm:text-2xl">Good morning, Amara</h2>
-          <p className="mt-1 text-sm text-[#5c6488]">Amara Foods · Business Name</p>
+          <h2 className="mt-7 text-xl font-semibold sm:text-2xl">Good morning, Ifiok</h2>
+          <p className="mt-1 text-sm text-[#5c6488]">Ifiok Foods · Business Name</p>
           <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold">
             <span className="flex items-center gap-1.5 rounded-full bg-[#1a2142] px-3.5 py-2 text-white">
               <Armchair className="size-3.5" /> Book a space

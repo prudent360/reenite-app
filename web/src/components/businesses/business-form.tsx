@@ -72,7 +72,7 @@ export function BusinessForm({ business }: { business?: Business }) {
   return (
     <form noValidate onSubmit={submit} className="space-y-6 p-5 sm:p-6">
       <div className="grid gap-5 sm:grid-cols-2">
-        <TextField label="Business name" name="name" value={form.name} onChange={set("name")} error={errors.name} required className="sm:col-span-2" placeholder="e.g. Amara Foods" />
+        <TextField label="Business name" name="name" value={form.name} onChange={set("name")} error={errors.name} required className="sm:col-span-2" placeholder="e.g. Ifiok Foods" />
         <SelectField label="Type" name="entity_type" value={form.entity_type} onChange={set("entity_type")} error={errors.entity_type} hint={typeHint}>
           {types.map((type) => (
             <option key={type.value} value={type.value}>
