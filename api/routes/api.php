@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\V1\Admin\Finance\SummaryController as FinanceSummar
 use App\Http\Controllers\Api\V1\Admin\LegalDocumentController;
 use App\Http\Controllers\Api\V1\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Api\V1\Admin\ReportController;
+use App\Http\Controllers\Api\V1\Admin\RolePermissionController;
 use App\Http\Controllers\Api\V1\Admin\ServiceBuilderController;
 use App\Http\Controllers\Api\V1\Admin\ServiceCategoryController;
 use App\Http\Controllers\Api\V1\Admin\ServiceController;
@@ -224,6 +225,9 @@ Route::prefix('v1')->name('v1.')->group(function () {
                 Route::post('delete', [CustomerBulkController::class, 'destroy'])->name('delete');
                 Route::post('message', [CustomerBulkController::class, 'message'])->middleware('throttle:10,1')->name('message');
             });
+            Route::post('customers', [UserController::class, 'store'])
+                ->middleware(['permission:customers.create', 'throttle:30,1'])
+                ->name('customers.store');
             Route::post('customers/import', CustomerImportController::class)
                 ->middleware(['permission:customers.manage', 'throttle:20,1'])
                 ->name('customers.import');
@@ -422,6 +426,8 @@ Route::prefix('v1')->name('v1.')->group(function () {
             });
 
             Route::middleware('permission:staff.manage')->group(function () {
+                Route::get('role-permissions', [RolePermissionController::class, 'index'])->name('role-permissions.index');
+                Route::put('role-permissions', [RolePermissionController::class, 'update'])->name('role-permissions.update');
                 Route::get('staff', [StaffController::class, 'index'])->name('staff.index');
                 Route::post('staff', [StaffController::class, 'store'])->name('staff.store');
                 Route::patch('staff/{user}', [StaffController::class, 'update'])->name('staff.update');

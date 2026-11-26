@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { ChevronLeft, ChevronRight, Search, Users } from "lucide-react";
+import { AddCustomerButton } from "@/components/admin/customers/add-customer-dialog";
 import { CustomerTable } from "@/components/admin/customers/customer-table";
 import { ImportCustomersButton } from "@/components/admin/customers/import-customers-dialog";
 import { PageHeader } from "@/components/app/page-header";
@@ -23,7 +24,7 @@ export default function CustomersPage({ searchParams }: PageProps<"/admin/custom
         description="Everyone who has signed up for a Reenite account."
         actions={
           <Suspense fallback={null}>
-            <ImportAction />
+            <CustomerActions />
           </Suspense>
         }
       />
@@ -34,9 +35,17 @@ export default function CustomersPage({ searchParams }: PageProps<"/admin/custom
   );
 }
 
-async function ImportAction() {
+async function CustomerActions() {
   const viewer = await requireStaff("customers.view");
-  return can(viewer, "customers.manage") ? <ImportCustomersButton /> : null;
+  const canImport = can(viewer, "customers.manage");
+  const canAdd = can(viewer, "customers.create");
+  if (!canImport && !canAdd) return null;
+  return (
+    <div className="flex flex-wrap gap-2">
+      {canImport && <ImportCustomersButton />}
+      {canAdd && <AddCustomerButton />}
+    </div>
+  );
 }
 
 async function CustomerList({ searchParams }: { searchParams: PageProps<"/admin/customers">["searchParams"] }) {

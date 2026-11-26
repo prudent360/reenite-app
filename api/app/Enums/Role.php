@@ -39,12 +39,12 @@ enum Role: string
             self::Customer, self::SuperAdmin => [],
             self::OperationsManager => [
                 'services.manage', 'orders.view_all', 'orders.manage', 'orders.assign',
-                'workspace.manage', 'bookings.manage', 'customers.view', 'customers.manage',
+                'workspace.manage', 'bookings.manage', 'customers.view', 'customers.create', 'customers.manage',
                 'invoices.manage', 'payments.view', 'reports.view', 'content.manage', 'documents.manage',
                 'coupons.manage', 'mail.manage', 'compliance.manage', 'consultations.manage', 'appointments.manage',
             ],
             self::FilingOfficer => ['orders.view_assigned', 'customers.view', 'compliance.manage', 'consultations.view_assigned', 'appointments.manage'],
-            self::FrontDesk => ['bookings.manage', 'bookings.checkin', 'customers.view', 'mail.manage', 'appointments.manage'],
+            self::FrontDesk => ['bookings.manage', 'bookings.checkin', 'customers.view', 'customers.create', 'mail.manage', 'appointments.manage'],
             self::Finance => [
                 'payments.view', 'payments.verify', 'refunds.process', 'invoices.manage', 'reports.view', 'customers.view',
                 'coupons.manage',
@@ -63,8 +63,22 @@ enum Role: string
             'orders.view_all', 'orders.view_assigned', 'orders.manage', 'orders.assign',
             'workspace.manage', 'bookings.manage', 'bookings.checkin',
             'payments.view', 'payments.verify', 'refunds.process', 'invoices.manage', 'coupons.manage',
-            'mail.manage', 'compliance.manage', 'consultations.manage', 'consultations.view_assigned', 'appointments.manage', 'customers.view', 'customers.manage',
+            'mail.manage', 'compliance.manage', 'consultations.manage', 'consultations.view_assigned', 'appointments.manage', 'customers.view', 'customers.create', 'customers.manage',
             'reports.view', 'documents.manage', 'audit.view',
+        ];
+    }
+
+    /**
+     * Permissions a Super Admin can switch on or off for each role from the Staff & Roles page.
+     * The lists in permissions() are only the starting point for these: once set, the seeder keeps
+     * whatever the admin chose.
+     *
+     * @return array<string, string> permission => what it lets staff do
+     */
+    public static function adjustablePermissions(): array
+    {
+        return [
+            'customers.create' => 'Add customers',
         ];
     }
 

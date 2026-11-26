@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Enums\InvoiceStatus;
+use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
 use App\Models\Booking;
@@ -13,8 +14,13 @@ use App\Models\Invoice;
 use App\Models\Mailbox;
 use App\Models\Order;
 use App\Models\User;
+use App\Notifications\CustomerAddedNotification;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -115,6 +121,53 @@ class UserController extends Controller
                     'active_until' => $mailbox->active_until?->toDateString(),
                 ]),
         ]]);
+    }
+
+    /**
+     * Adds one customer, e.g. a walk-in at the front desk. The account gets a random password and the
+     * customer is emailed a link to set their own, so staff never handle it. Someone who booked as a
+     * guest with the same email becomes a full account and keeps their bookings.
+     */
+    public function store(Request $request): JsonResponse
+    {
+        $request->merge(['email' => mb_strtolower(trim((string) $request->input('email')))]);
+        $guest = User::query()->where('email', $request->input('email'))->where('status', User::STATUS_GUEST)->first();
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($guest?->id)],
+            'phone' => ['nullable', 'string', 'max:20', 'regex:/^\+?[0-9\s-]{7,20}$/', Rule::unique('users', 'phone')->ignore($guest?->id)],
+        ], [
+            'email.unique' => 'There is already an account with this email. Search for it in the customer list.',
+            'phone.unique' => 'Another account already uses this phone number.',
+            'phone.regex' => 'Enter a phone number with digits only, for example 08012345678.',
+        ]);
+
+        $customer = DB::transaction(function () use ($validated, $guest) {
+            $customer = $guest ?? new User(['email' => $validated['email'], 'type' => User::TYPE_CUSTOMER]);
+            $customer->forceFill([
+                'name' => $validated['name'],
+                'phone' => $validated['phone'] ?? $customer->phone,
+                'password' => Str::password(32),
+                'status' => User::STATUS_ACTIVE,
+                'must_change_password' => false,
+                // Staff took the address from the customer, and the link only works from that inbox.
+                'email_verified_at' => $customer->email_verified_at ?? now(),
+            ])->save();
+
+            if (! $customer->hasRole(Role::Customer->value)) {
+                $customer->assignRole(Role::Customer->value);
+            }
+
+            return $customer;
+        });
+
+        $customer->notify(new CustomerAddedNotification(Password::broker()->createToken($customer), $request->user()->name));
+
+        return (new UserResource($customer->load('roles')))
+            ->additional(['message' => "{$customer->name} has been added. We've emailed {$customer->email} a link to set their password."])
+            ->response()
+            ->setStatusCode(Response::HTTP_CREATED);
     }
 
     public function updateStatus(Request $request, User $user): UserResource

@@ -51,6 +51,13 @@ export type Paginated<T> = {
 };
 
 /** Shape returned by form Server Actions and consumed by useActionState. */
+/** A permission Super Admins switch on or off per staff role on the Staff & Roles page. */
+export type RolePermission = {
+  name: string;
+  label: string;
+  roles: { name: string; label: string; granted: boolean }[];
+};
+
 export type FormState = {
   ok?: boolean;
   message?: string;

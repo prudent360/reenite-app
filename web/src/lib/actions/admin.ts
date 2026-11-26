@@ -51,6 +51,33 @@ export async function removeStaffInvite(userId: number): Promise<FormState> {
   return { ok: true, message: "Invite removed." };
 }
 
+/** Adds one customer. They're emailed a link to set their own password. */
+export async function addCustomer(_prev: FormState, formData: FormData): Promise<FormState> {
+  const values = {
+    name: String(formData.get("name") ?? "").trim(),
+    email: String(formData.get("email") ?? "").trim().toLowerCase(),
+    phone: String(formData.get("phone") ?? "").trim(),
+  };
+  try {
+    const { message } = await api<{ message: string }>("/admin/customers", { method: "POST", body: { ...values, phone: values.phone || null } });
+    refresh();
+    return { ok: true, message };
+  } catch (error) {
+    return toFormState(error, values);
+  }
+}
+
+/** Sets which staff roles have one of the permissions Super Admins can adjust, e.g. adding customers. */
+export async function setRolePermission(permission: string, roles: string[]): Promise<FormState> {
+  try {
+    const { message } = await api<{ message: string }>("/admin/role-permissions", { method: "PUT", body: { permission, roles } });
+    refresh();
+    return { ok: true, message };
+  } catch (error) {
+    return toFormState(error);
+  }
+}
+
 export async function setCustomerStatus(userId: number, status: "active" | "suspended"): Promise<FormState> {
   try {
     await api(`/admin/customers/${userId}/status`, { method: "PATCH", body: { status } });

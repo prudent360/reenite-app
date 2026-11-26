@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { InviteStaffForm } from "@/components/admin/invite-staff-form";
+import { RolePermissionsCard } from "@/components/admin/role-permissions-card";
 import { StaffRow } from "@/components/admin/staff-row";
 import { PageHeader } from "@/components/app/page-header";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/loader";
 import { api } from "@/lib/api";
 import { requireStaff } from "@/lib/session";
-import type { User } from "@/lib/types";
+import type { RolePermission, User } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Staff & Roles" };
 
@@ -26,9 +27,10 @@ export default function StaffPage() {
 
 async function StaffDirectory() {
   const viewer = await requireStaff("staff.manage");
-  const [{ data: staff }, { data: roles }] = await Promise.all([
+  const [{ data: staff }, { data: roles }, { data: permissions }] = await Promise.all([
     api<{ data: User[] }>("/admin/staff"),
     api<{ data: Role[] }>("/admin/meta/staff-roles"),
+    api<{ data: RolePermission[] }>("/admin/role-permissions"),
   ]);
 
   return (
@@ -44,6 +46,7 @@ async function StaffDirectory() {
 
       <div className="space-y-6">
         <InviteStaffForm roles={roles} />
+        <RolePermissionsCard permissions={permissions} />
         <Card className="p-5">
           <h2 className="font-bold">What each role can do</h2>
           <dl className="mt-4 space-y-3 text-sm">
@@ -51,7 +54,7 @@ async function StaffDirectory() {
               ["Super Admin", "Everything, including payment settings and staff."],
               ["Operations Manager", "Services, all orders and assignment, workspace, customers, reports."],
               ["Filing Officer", "Orders assigned to them and those customers' documents."],
-              ["Front Desk", "Bookings and QR check-in."],
+              ["Front Desk", "Bookings, QR check-in, mail and appointments."],
               ["Finance", "Payments, bank-transfer approval, refunds, reports."],
             ].map(([role, access]) => (
               <div key={role}>
