@@ -21,8 +21,8 @@
     "path": "/Users/tekskillup/reenite-android-keys/reenite-upload.jks",
     "alias": "upload"
   },
-  "appVersionName": "2.0.0",
-  "appVersionCode": 2026111301,
+  "appVersionName": "2.0.1",
+  "appVersionCode": 2026112801,
   "shortcuts": [
     { "name": "Book a space", "shortName": "Book", "url": "/dashboard/workspace/book", "chosenIconUrl": "http://localhost:3000/icons/icon-192.png" },
     { "name": "My bookings", "shortName": "Bookings", "url": "/dashboard/workspace", "chosenIconUrl": "http://localhost:3000/icons/icon-192.png" }
@@ -44,5 +44,5 @@
   "fileHandlers": [],
   "launchHandlerClientMode": "",
   "displayOverride": [],
-  "appVersion": "2.0.0"
+  "appVersion": "2.0.1"
 }
